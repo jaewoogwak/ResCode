@@ -166,7 +166,7 @@ def run_rescode_deepseek(
     val_data_path: str = "PATH/TO/YOUR/val-calib.json",
     train_batch_size: int = 2,
     eval_batch_size: int = 16,
-    # DeepSeek-V1/V2 set first_k_dense_replace=1 — layer 0 is a dense MLP and
+    # DeepSeek-V1/V2 set first_k_dense_replace=1 - layer 0 is a dense MLP and
     # must not be clustered/merged. The grouper bumps start_layer up to that
     # automatically, but we default to 1 to make intent explicit.
     start_layer: int = 1,
@@ -205,7 +205,7 @@ def run_rescode_deepseek(
     joint_val_n_sentences: int = 8,
     joint_val_every: int = 10,
     joint_val_seed: int = 4321,
-    # PreAct-STAR (off by default; backward compatible)
+    # Residual-code module (Idea 2)
     preact_star: bool = False,
     preact_mode: str = "gate_bias",     # gate_bias | gate_up_bias | token_adaptive_lowrank | lowrank_preact | lowrank_preact_plus_down | custom
     preact_gate_bias: Optional[bool] = None,
@@ -240,10 +240,10 @@ def run_rescode_deepseek(
     preact_lr_down: float = 3.0e-3,
     fit_preact: bool = False,            # alias for: train preact params at all
     train_post_codes: bool = False,
-    # teacher mode: "online" — keep unmerged model in GPU and forward each batch
-    #               (constant memory ~2x model). DEFAULT, suited to large
+    # teacher mode: "online" - keep unmerged model in GPU and forward each batch
+    #               (constant memory ~2x model); the default, suited to large
     #               calibration data.
-    #             "offline" — pre-collect teacher buffers across full data
+    #             "offline" - pre-collect teacher buffers across full data
     #               (memory grows with N_batches; OK only with small calib).
     teacher_mode: str = "online",
     # output
@@ -253,6 +253,13 @@ def run_rescode_deepseek(
     num_fewshot: int = 0,
     seed: int = 0,
     calib_seed: int = 42,   # calibration-sampling seed (varied jointly with `seed` for multi-seed runs)
+    # See rescode_qwen.py for the options below.
+    clustering: str = "dist",
+    calib_stats_cache: Optional[str] = None,
+    budget_aware: bool = True,
+    rec_mode: str = "local",
+    save_model: bool = False,
+    eval_limit: int = 0,
 ):
     print(
         "[RESCODE-DeepSeek] model=", model_name,
@@ -264,7 +271,7 @@ def run_rescode_deepseek(
     )
     torch.manual_seed(seed)
 
-    # ---- Build PreActStarConfig (None when disabled — keeps legacy paths) ----
+    # ---- Build PreActStarConfig (None when disabled) ----
     preact_cfg: Optional[PreActStarConfig] = None
     if preact_star:
         # Resolve which sub-modules each preset turns on. Explicit overrides win.
@@ -418,21 +425,39 @@ def run_rescode_deepseek(
         descriptor_tokens=descriptor_tokens,
     )
 
-    # 1) Cluster (uses RESCODE machinery; same as merging-qwen.py with dominant='no').
-    print(f"[RESCODE-DeepSeek] computing RESCODE clusters (calib n={cluster_n_sentences})...")
+    t_compress = time.time()
+    budget_summary = None
     t0 = time.time()
-    # excl-topk needs usage_frequency populated even if hc_merge != "freq"
-    needs_freq = (hc_merge == "freq") or (similarity_base == "expert-output-excl-topk")
-    if needs_freq:
-        grouper.compute_all_usages(model, cluster_dataloader)
-    # Capture per-layer hierarchical merge sequences (used by split method A).
     from rescode.merging import clustering as _clustering
     _clustering.clear_merge_seq_log()
-    dom_experts = grouper.cluster_experts(
-        model=model, dataloader=cluster_dataloader, num_groups=num_average_groups,
-        exclude_top_percent=float(exclude_top_percent),
-        excl_mode=str(excl_mode),
-    )
+    if clustering == "dist":
+        # 1) Idea 1 from one pass over the full calibration set D: saliency a_i
+        #    (Eq. 2), routing frequency omega_i and dist_out(i, j) (Step 2).
+        from rescode.merging.pipeline import cluster_from_stats
+        print(f"[RESCODE-DeepSeek] computing calibration statistics on D (n={n_sentences})...")
+        budget_summary = cluster_from_stats(
+            model, grouper, dataloader, "deepseek",
+            num_groups=num_average_groups,
+            singleton_ratio=float(exclude_top_percent) / 100.0,
+            rank=preact_lowrank_rank,
+            lowrank_target=preact_lowrank_target if preact_star else None,
+            linkage=linkage,
+            budget_aware=budget_aware,
+            cache_path=calib_stats_cache,
+        )
+        dom_experts = None
+    else:
+        # 1) Descriptor clustering on `cluster_n_sentences` sequences.
+        print(f"[RESCODE-DeepSeek] computing RESCODE clusters (calib n={cluster_n_sentences})...")
+        # excl-topk needs usage_frequency populated even if hc_merge != "freq"
+        needs_freq = (hc_merge == "freq") or (similarity_base == "expert-output-excl-topk")
+        if needs_freq:
+            grouper.compute_all_usages(model, cluster_dataloader)
+        dom_experts = grouper.cluster_experts(
+            model=model, dataloader=cluster_dataloader, num_groups=num_average_groups,
+            exclude_top_percent=float(exclude_top_percent),
+            excl_mode=str(excl_mode),
+        )
     _merge_seq_log = _clustering.get_merge_seq_log()
     print(f"[RESCODE-DeepSeek] clustering took {time.time() - t0:.1f}s")
 
@@ -445,9 +470,9 @@ def run_rescode_deepseek(
 
     # 2) Collect teacher signals BEFORE merging (using the original experts).
     # We collect whenever any fitting will run AND the MSE term will be used:
-    #   - legacy code fitting (`fit_codes=True`) always needs teacher
+    #   - code fitting (`fit_codes=True`) always needs teacher
     #   - joint preact fitting only needs teacher when lambda_mse > 0
-    # Skipping when lambda_mse=0 avoids ~O(N_batches × N_clusters × T × D) CPU
+    # Skipping when lambda_mse=0 avoids ~O(N_batches x N_clusters x T x D) CPU
     # buffer growth that easily exceeds container memory at large N_SENTENCES.
     teacher_buffers = None
     will_fit_preact = (
@@ -457,10 +482,19 @@ def run_rescode_deepseek(
             or preact_cfg.train_down_residual
         )
     )
-    needs_teacher = star_cfg.fit_codes or (will_fit_preact and float(lambda_mse) > 0.0)
+    will_fit = star_cfg.load_rescode_path is None
+    use_layer_recon = (
+        will_fit
+        and rec_mode in ("trajectory", "local")
+        and will_fit_preact
+        and float(lambda_mse) > 0.0
+    )
+    needs_teacher = will_fit and (star_cfg.fit_codes or (
+        will_fit_preact and float(lambda_mse) > 0.0 and rec_mode == "cluster"
+    ))
     use_online_teacher = (
         needs_teacher
-        and not star_cfg.fit_codes        # legacy code-fit path needs offline buffers
+        and not star_cfg.fit_codes        # the code-fit path needs offline buffers
         and str(teacher_mode).lower() == "online"
     )
     if needs_teacher and not use_online_teacher:
@@ -472,12 +506,12 @@ def run_rescode_deepseek(
             config=star_cfg,
         )
     elif use_online_teacher:
-        print("[RESCODE-DeepSeek] online teacher mode — skipping offline buffer collection.")
+        print("[RESCODE-DeepSeek] online teacher mode - skipping offline buffer collection.")
     elif will_fit_preact:
         print("[RESCODE-DeepSeek] skipping teacher (lambda_mse=0).")
     val_loader = None
     val_teacher_buffers = None
-    # Build val_loader whenever joint training will run a fit pass — LM-only
+    # Build val_loader whenever joint training will run a fit pass - LM-only
     # val loss is still useful even without teacher (lambda_mse=0).
     # An empty or missing val_data_path disables joint validation (and the
     # best-val checkpoint restore) instead of crashing at load time.
@@ -489,7 +523,7 @@ def run_rescode_deepseek(
         and joint_val_n_sentences > 0
     )
     if wants_joint_val and not has_val_data:
-        print(f"[RESCODE-DeepSeek] val_data_path missing ({val_data_path!r}) — joint validation disabled.")
+        print(f"[RESCODE-DeepSeek] val_data_path missing ({val_data_path!r}) - joint validation disabled.")
     if wants_joint_val and has_val_data:
         val_loader = _build_dataloader(
             tokenizer,
@@ -508,7 +542,7 @@ def run_rescode_deepseek(
                 config=star_cfg,
             )
         elif use_online_teacher:
-            print("[RESCODE-DeepSeek] online val teacher mode — skipping offline val buffer collection.")
+            print("[RESCODE-DeepSeek] online val teacher mode - skipping offline val buffer collection.")
         else:
             print("[RESCODE-DeepSeek] val_loader built; teacher val collection skipped (lambda_mse=0).")
 
@@ -604,6 +638,12 @@ def run_rescode_deepseek(
         print(f"[RESCODE-DeepSeek] dual splits computed: {n_dual_total} clusters across "
               f"{len(split_assignments)} layers (method={method})")
 
+    # L_rec: frozen copies of the experts that will be merged.
+    original_experts = None
+    if use_layer_recon:
+        from rescode.merging.layer_recon import snapshot_original_experts
+        original_experts = snapshot_original_experts(model, cluster_maps, "deepseek")
+
     # 2.7) Optional: precompute spectral / SVD-aligned init for lowrank_preact
     # using the ORIGINAL per-expert weights (before merging overwrites them).
     preact_init_data = None
@@ -620,14 +660,19 @@ def run_rescode_deepseek(
     )
     if wants_gate_up_init or wants_down_init:
         from rescode.merging import compute_lowrank_preact_init_data
+        from rescode.merging.pipeline import residual_init_weights
+        # omega_i: routing frequencies (paper App. E); residuals are taken with
+        # respect to the saliency-weighted base S_G the merged model uses.
+        init_freq, init_base = residual_init_weights(grouper, clustering, hc_merge, rescode_delta)
         print(f"[RESCODE-DeepSeek] computing lowrank_preact init "
               f"(method={preact_cfg.lowrank_init}, target={preact_cfg.lowrank_target}, "
-              f"rank={preact_cfg.lowrank_rank}, α={preact_cfg.lowrank_alpha}, "
+              f"rank={preact_cfg.lowrank_rank}, alpha={preact_cfg.lowrank_alpha}, "
               f"down_init={preact_cfg.down_residual_init})...")
         preact_init_data = compute_lowrank_preact_init_data(
             model=model,
             cluster_maps=cluster_maps,
-            freq_dict=grouper.usage_frequency_state_dict() if hc_merge == "freq" else None,
+            freq_dict=init_freq,
+            base_weight_dict=init_base,
             rank=int(preact_cfg.lowrank_rank),
             alpha=float(preact_cfg.lowrank_alpha),
             target=preact_cfg.lowrank_target,
@@ -660,7 +705,7 @@ def run_rescode_deepseek(
             merging_layers=list(range(start_layer, model.config.num_hidden_layers)),
         )
     elif hc_merge == "saliency":
-        print(f"[RESCODE-DeepSeek] merging via RESCODE saliency-weighted averaging (δ={rescode_delta})...")
+        print(f"[RESCODE-DeepSeek] merging via RESCODE saliency-weighted averaging (delta={rescode_delta})...")
         model = merge_by_groups_with_saliency_weighted(
             model, grouper=grouper,
             merging_layers=list(range(start_layer, model.config.num_hidden_layers)),
@@ -684,6 +729,11 @@ def run_rescode_deepseek(
     # 4) Convert to RESCODE.
     print("[RESCODE-DeepSeek] converting MoE blocks to RESCODE...")
     model = convert_deepseek_to_rescode(model, cluster_maps, star_cfg, preact_init_data=preact_init_data)
+
+    rec = None
+    if original_experts is not None:
+        from rescode.merging.pipeline import start_layer_recon
+        rec = start_layer_recon(model, original_experts, "deepseek", rec_mode)
 
     # 4.5) Optional preact std calibration on the merged model.
     if star_cfg.preact_enabled and star_cfg.preact_star.normalize_by_preact_std:
@@ -719,6 +769,7 @@ def run_rescode_deepseek(
                 val_every=int(joint_val_every),
                 online_teacher=online_teacher,
                 val_online_teacher=val_online_teacher,
+                rec=rec,
             )
         else:
             print("[RESCODE-DeepSeek] layerwise fitting (post codes + preact, as configured)...")
@@ -729,11 +780,19 @@ def run_rescode_deepseek(
             del val_teacher_buffers
         if online_teacher is not None:
             online_teacher.cleanup()
-            del teacher_model  # noqa: F821 — defined when use_online_teacher
+            del teacher_model  # noqa: F821 - defined when use_online_teacher
             online_teacher = None
             val_online_teacher = None
         gc.collect()
         torch.cuda.empty_cache()
+    if rec is not None:
+        from rescode.merging.pipeline import stop_layer_recon
+        stop_layer_recon(model, rec)
+        rec = None
+        original_experts = None
+        gc.collect()
+    compress_minutes = (time.time() - t_compress) / 60.0
+    print(f"[RESCODE-DeepSeek] compression (clustering + init + fitting) took {compress_minutes:.1f} min")
 
     if star_cfg.report_reconstruction_error:
         log_code_statistics(model)
@@ -743,7 +802,7 @@ def run_rescode_deepseek(
         log_giant_cluster_summary(cluster_maps, layer_results=layer_results)
 
     # 6) Save.
-    if output_path is not None:
+    if output_path is not None and save_model:
         os.makedirs(output_path, exist_ok=True)
         torch.save(model.state_dict(), os.path.join(output_path, "model.pth"))
         print(f"[RESCODE-DeepSeek] saved model state_dict to {output_path}/model.pth")
@@ -756,6 +815,8 @@ def run_rescode_deepseek(
     # one merged results payload, so we always run a single call and then
     # post-process to print/append `avg` (mean acc) and `avg_norm`
     # (mean acc_norm with fallback) to both stdout and the result file.
+    from rescode.merging.pipeline import write_budget_line
+    write_budget_line(result_path, budget_summary, compress_minutes)
     if do_eval:
         if result_path:
             os.makedirs(os.path.dirname(result_path) or ".", exist_ok=True)
@@ -766,6 +827,7 @@ def run_rescode_deepseek(
         results_payload = evaluate_fewshot(
             model, tokenizer=tokenizer, task=task, num_fewshot=num_fewshot,
             eval_batch_size=eval_batch_size, output_path=result_path, log=True,
+            limit=int(eval_limit) if eval_limit else None,
         )
         report_eval_summary(
             results_payload=results_payload,

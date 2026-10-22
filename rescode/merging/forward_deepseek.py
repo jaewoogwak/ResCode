@@ -10,13 +10,15 @@ Key differences vs. Qwen2/Qwen3:
     - `top_k` and `norm_topk_prob` live on `self.gate`, not `self`.
     - DeepSeek has `self.shared_experts` (single MLP, despite the plural name)
       which is added on top of the routed contribution.
-    - The stock DeepSeek decoder layer calls `y = self.mlp(hidden_states)` —
+    - The stock DeepSeek decoder layer calls `y = self.mlp(hidden_states)` -
       it expects a single tensor return, not a (output, router_logits) tuple.
       So this forward returns ONLY `final_hidden_states`.
 """
 
 import torch
 import torch.nn.functional as F
+
+from .forward_common import add_original_cluster_output
 
 
 def rescode_deepseek_moe_forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
@@ -61,6 +63,9 @@ def rescode_deepseek_moe_forward(self, hidden_states: torch.Tensor) -> torch.Ten
             expert = singleton_experts[cluster_id]
             current_hidden = expert(current_state) * routing_weights[top_x, idx, None]
             final_hidden_states.index_add_(0, top_x, current_hidden.to(final_hidden_states.dtype))
+        elif star.get("teacher_active"):
+            add_original_cluster_output(final_hidden_states, hidden_states, member_ids,
+                                        selected_experts, routing_weights, star["orig_experts"])
         else:
             meta = meta_experts[cluster_id]
             cluster_out = meta(

@@ -832,10 +832,10 @@ class MixtralSparseMoeBlock(nn.Module):
         self.hidden_dim = config.hidden_size
         self.ffn_dim = config.intermediate_size
 
-        # 🔍 For layer-wise expert_num
+        # For layer-wise expert_num
         self.num_experts = config.num_local_experts if isinstance(config.num_local_experts, int) else config.num_local_experts[layer_index]
 
-        # 🔍 for compatibility of different gate size
+        # for compatibility of different gate size
         if hasattr(config, "gate_num_experts"):
             self.gate_num_experts = config.gate_num_experts[layer_index] if isinstance(config.gate_num_experts, list) else config.gate_num_experts
             self.top_k = config.num_experts_per_tok
@@ -865,7 +865,7 @@ class MixtralSparseMoeBlock(nn.Module):
 
         # One hot encode the selected experts to create an expert mask
         # this will be used to easily index which expert is going to be sollicitated
-        expert_mask = torch.nn.functional.one_hot(selected_experts, num_classes=self.gate_num_experts).permute(2, 1, 0)  # 🔍 for compatibility of different gate size
+        expert_mask = torch.nn.functional.one_hot(selected_experts, num_classes=self.gate_num_experts).permute(2, 1, 0)  # for compatibility of different gate size
 
         # Loop over all available experts in the model and perform the computation on each expert
         for expert_idx in range(self.num_experts):
@@ -884,7 +884,7 @@ class MixtralSparseMoeBlock(nn.Module):
             # states by `routing_weights` on the corresponding tokens (top-1 and top-2)
             current_state = hidden_states[None, top_x_list].reshape(-1, hidden_dim)
 
-            # 🔍 forward for scoring
+            # forward for scoring
             current_hidden_states = expert_layer(current_state) * routing_weights[top_x_list, idx_list, None]
             #####################################
 
@@ -904,13 +904,11 @@ class MixtralDecoderLayer(nn.Module):
         self.self_attn = MIXTRAL_ATTENTION_CLASSES[config._attn_implementation](config, layer_idx)
         self.input_layernorm = MixtralRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
-        # 🔍
         if hasattr(config, "layer_experts_idx"):
             num_experts = -1 if config.layer_experts_idx[layer_idx] is None else len(config.layer_experts_idx[layer_idx])
         else:
             num_experts = config.num_local_experts if isinstance(config.num_local_experts, int) else config.num_local_experts[layer_idx]
 
-        # 🔍
         if num_experts < 0:  # no MoE or Norm
             self.block_sparse_moe = None
             self.post_attention_layernorm = None
@@ -968,7 +966,7 @@ class MixtralDecoderLayer(nn.Module):
         )
         hidden_states = residual + hidden_states
 
-        # 🔍 Fully Connected
+        # Fully Connected
         router_logits = None
 
         if self.post_attention_layernorm is None and self.block_sparse_moe is None:

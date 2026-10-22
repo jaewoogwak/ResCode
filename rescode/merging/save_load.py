@@ -31,8 +31,8 @@ def _iter_moe_blocks(model: nn.Module):
                 break
 
 
-# Low-rank residual matrices — bulk of checkpoint size; safe to bf16 for storage.
-# bias_codes / preact_std are tiny + accuracy-critical → kept fp32.
+# Low-rank residual matrices - bulk of checkpoint size; safe to bf16 for storage.
+# bias_codes / preact_std are tiny + accuracy-critical -> kept fp32.
 _LOWRANK_RESIDUAL_KEYS = (
     "gate_A", "gate_B", "gate_z",
     "up_A", "up_B", "up_z",
@@ -64,7 +64,7 @@ def _serialize_meta(
     elif meta.code_type == "none":
         pass
 
-    # PreAct-STAR (optional). Only the params that exist (config-controlled)
+    # Residual module (optional). Only the params that exist (config-controlled)
     # get serialized.
     if meta.preact is not None:
         preact_dump: Dict[str, torch.Tensor] = {
@@ -140,7 +140,7 @@ def _load_meta_into(meta: RescodeMetaExpert, dump: Dict):
             meta.code_U.copy_(dump["code_U"].to(meta.code_U.device).to(meta.code_U.dtype))
             meta.code_Z.copy_(dump["code_Z"].to(meta.code_Z.device).to(meta.code_Z.dtype))
 
-    # PreAct-STAR (optional)
+    # Residual module (optional)
     preact_dump = dump.get("preact")
     if preact_dump is not None and meta.preact is not None:
         with torch.no_grad():

@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 import math
+import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -57,7 +58,7 @@ def _preact_param_groups(
         - token-adaptive down residual at preact_star.lr_down_residual
           if train_down_residual
 
-    A preact-disabled meta uses the legacy single-group optimizer with
+    A preact-disabled meta uses a single-group optimizer with
     config.fit_lr.
     """
     groups: List[dict] = []
@@ -191,7 +192,7 @@ def _select_token_subset(buffers: LayerCalibration, max_tokens: int):
     a per-batch slice of a global random permutation. Only call this when the
     downstream consumer concatenates everything (i.e. layerwise fit). For
     joint LM-loss fitting we re-iterate calib_loader and need shape-aligned
-    teacher tensors per batch — call sites in joint mode must skip this.
+    teacher tensors per batch - call sites in joint mode must skip this.
     """
     total = sum(t.shape[0] for t in buffers.hidden_states)
     if total <= max_tokens:
@@ -470,12 +471,12 @@ def collect_teacher_signals_mixtral(
 
 # ============================================================ Online teacher
 class OnlineTeacher:
-    """Per-batch teacher — computes per-cluster teacher outputs on-the-fly.
+    """Per-batch teacher - computes per-cluster teacher outputs on-the-fly.
 
     Wraps an UNMERGED reference model and registers forward hooks that capture
     `sum_{j in C cap T(x)} g_j(x) * E_j(x)` per non-singleton cluster on every
     forward pass. Outputs stay on GPU (no offline buffer accumulation), so
-    memory is O(layers × clusters_per_layer × T × D) per call — independent of
+    memory is O(layers x clusters_per_layer x T x D) per call - independent of
     total batch count.
 
     Use this when the offline `collect_teacher_signals_*` would blow up CPU
@@ -486,7 +487,7 @@ class OnlineTeacher:
     model : the original (unmerged) MoE model. Must remain untouched after
         construction (do not merge in-place; deepcopy first if needed).
     cluster_maps : per-layer cluster maps.
-    backbone : "qwen", "qwen3", "mixtral", or "deepseek" — selects the
+    backbone : "qwen", "qwen3", "mixtral", or "deepseek" - selects the
         per-layer MoE block accessor and the router-logits computation.
     """
 
@@ -605,7 +606,7 @@ def _make_optimizer(params, config: RescodeConfig):
 
     Accepts either a flat list of parameters or a list of param-group dicts
     (e.g. [{params, lr, name}, ...]) so different LRs can be applied per
-    PreAct-STAR group.
+    residual group.
     """
     name = config.optimizer.lower()
     if name == "adam":
@@ -720,8 +721,8 @@ def fit_codes_for_block(
         rw_dev = rw.to(device=device, dtype=fit_dtype)
         teacher_dev = teacher.to(device=device, dtype=fit_dtype)
 
-        # PreAct-STAR-aware parameter selection. When preact is OFF this
-        # collapses to the legacy code-only group with config.fit_lr.
+        # Parameter selection. Without the residual module this is the
+        # code-only group with config.fit_lr.
         param_groups = _preact_param_groups(meta, config)
         flat_params = [p for grp in param_groups for p in grp["params"]]
 
@@ -748,8 +749,7 @@ def fit_codes_for_block(
         for p in meta.parameters():
             p.requires_grad_(id(p) in train_ids)
 
-        # Log trainable param names once per cluster (debugging aid for
-        # PreAct-STAR experiments where users sweep which groups are on).
+        # Log trainable param names once per cluster.
         trainable_names = _trainable_param_names_for_log(meta, config)
         print(
             f"[RESCODE][fit] layer={cmap.layer_idx} cluster={cid} "
@@ -893,7 +893,7 @@ def _collect_all_code_params(model: nn.Module):
 
 
 def _collect_all_preact_params(model: nn.Module):
-    """Return all PreAct-STAR parameters across the model (flat list)."""
+    """Return all residual-module parameters across the model (flat list)."""
     params = []
     for layer in model.model.layers:
         block = getattr(layer, "mlp", None) or getattr(layer, "block_sparse_moe", None)
@@ -909,7 +909,7 @@ def _build_joint_param_groups(model: nn.Module, config: RescodeConfig):
     """Per-LR optimizer param groups for the joint LM-loss fit.
 
     Mirrors `_preact_param_groups` but applies it model-wide. When PreAct is
-    off this falls back to a single legacy group of code parameters at
+    off this falls back to a single group of code parameters at
     config.fit_lr.
     """
     preact_cfg = config.preact_star
@@ -1170,9 +1170,14 @@ def fit_codes_joint_lm(
     val_every: int = 10,
     online_teacher: Optional["OnlineTeacher"] = None,
     val_online_teacher: Optional["OnlineTeacher"] = None,
+    rec=None,
 ) -> Dict[str, float]:
     """Joint fitting: per-cluster MSE + LM cross-entropy on the same calibration
     data. Only code parameters are updated; everything else is frozen.
+
+    With `rec` (a layer_recon.LayerReconstruction) the reconstruction term is
+    the per-layer L_rec of Sec. 4.4 instead of the per-cluster
+    MSE, and the objective is lambda_mse * L_rec + lambda_lm * L_LM.
 
     Iterates calib_loader for `config.joint_epochs` passes. The MSE term is
     re-derived each step against the cached teacher cluster contributions
@@ -1181,7 +1186,7 @@ def fit_codes_joint_lm(
     For simplicity we re-run the calibration loader from scratch each epoch and
     rely on the fact that the dataloader is deterministic (shuffle=False).
     """
-    # Collect ALL trainable RESCODE / PreAct-STAR params into per-LR groups.
+    # Collect all trainable residual parameters into per-LR groups.
     param_groups = _build_joint_param_groups(model, config)
     flat_params = [p for grp in param_groups for p in grp["params"]]
     if not flat_params:
@@ -1209,7 +1214,11 @@ def fit_codes_joint_lm(
         f"grad_accum={accum_steps} optimizer_steps={total_steps}"
     )
 
-    handles, student_store = _register_meta_capture_hooks(model)
+    if rec is None:
+        handles, student_store = _register_meta_capture_hooks(model)
+    else:
+        handles, student_store = [], {}
+    t_start = time.time()
 
     # Build teacher per-batch lists keyed (layer_idx, cluster_id). Each entry
     # is a list[Tensor] aligned with the order of calib_loader iteration.
@@ -1233,8 +1242,8 @@ def fit_codes_joint_lm(
     loss_ema = None
     mse_ema = None
     # Best-val checkpointing: if validation teacher buffers are available,
-    # use the same joint objective as training; otherwise fall back to held-out
-    # LM loss for backward-compatible runs.
+    # use the same joint objective as training; otherwise fall back to the
+    # held-out LM loss.
     best_val_metric = float("inf")
     best_val_metric_name = "joint/val_loss" if val_teacher_per_batch is not None else "joint/val_lm_loss"
     best_val_loss = float("inf")
@@ -1333,6 +1342,8 @@ def fit_codes_joint_lm(
                 # MSE is actually used.
                 if online_teacher is not None and config.lambda_mse > 0:
                     online_teacher.forward(batch)
+                if rec is not None:
+                    rec.begin_batch(batch)
 
                 outputs = model(**batch)
                 lm_loss = outputs.loss
@@ -1342,6 +1353,9 @@ def fit_codes_joint_lm(
                 mse_total = lm_loss.new_zeros(())
                 mse_count = 0
                 shape_skip_warned = False
+                if rec is not None:
+                    mse_total = rec.loss()
+                    mse_count = rec.num_layers()
                 for (lid, cid), student_out in student_store.items():
                     if online_teacher is not None:
                         teacher = online_teacher.get(lid, cid)
@@ -1357,11 +1371,8 @@ def fit_codes_joint_lm(
                         if teacher.numel() == student_out.numel():
                             teacher = teacher.view_as(student_out)
                         else:
-                            # Surface this once: it usually means the teacher
-                            # buffers were subsampled at collection time, which
-                            # silently zeros out the cluster-MSE term. The
-                            # collection path now skips subsampling for joint
-                            # mode, so seeing this in practice is a regression.
+                            # Teacher buffers were subsampled at collection
+                            # time; warn once and skip this cluster.
                             if epoch == 0 and batch_idx == 0 and not shape_skip_warned:
                                 print(
                                     f"[RESCODE][joint][warn] shape skip "
@@ -1374,7 +1385,7 @@ def fit_codes_joint_lm(
                     mse_total = mse_total + F.mse_loss(student_out.float(),
                                                        teacher.float())
                     mse_count += 1
-                if mse_count > 0:
+                if mse_count > 0 and rec is None:
                     mse_total = mse_total / mse_count
 
                 ridge_term = _ridge_term_for_model(model)
@@ -1421,6 +1432,14 @@ def fit_codes_joint_lm(
                     _clip_all_codes(model)
                     optim.zero_grad(set_to_none=True)
                     global_step += 1
+                    if global_step == 1 or global_step % 25 == 0 or global_step == total_steps:
+                        print(
+                            f"[RESCODE][joint] step {global_step}/{total_steps} "
+                            f"lm_ema={lm_loss_ema:.4f} rec_ema={mse_ema:.4e} "
+                            f"lr={optim.param_groups[0]['lr']:.3e} "
+                            f"elapsed={(time.time() - t_start) / 60:.1f}min",
+                            flush=True,
+                        )
 
                     if (
                         val_loader is not None
@@ -1489,7 +1508,7 @@ def fit_codes_joint_lm(
 def freeze_non_code_parameters(model: nn.Module, include_preact: bool = True):
     """Set requires_grad=False on every parameter except RESCODE codes.
 
-    When `include_preact=True` (default), PreAct-STAR parameters
+    When `include_preact=True` (default), residual-module parameters
     (`gate_bias_codes`, `up_bias_codes`, lowrank A/B/z, down_L/R/z) are also
     kept trainable. Per-cluster fitting in `fit_codes_for_block` further
     refines this by config-driven group filters.

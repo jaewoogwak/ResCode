@@ -48,10 +48,8 @@ def _build_meta_for_cluster(
     wrap it in a RescodeMetaExpert with codes initialized to identity."""
     rep_expert = moe_block.experts[member_ids[0]]
     gate_proj, up_proj, down_proj = get_projs(rep_expert)
-    # PreAct-STAR is OFF by default. When preact_star is set on the config and
-    # `enabled=True`, the meta expert grows an optional `PreActModule` whose
-    # zero-init parameters keep the forward output identical to vanilla
-    # RESCODE. The preact_star block is otherwise inert.
+    # With `config.preact_star` enabled the meta expert also holds a
+    # `PreActModule` with the residual bases and codes.
     preact_cfg = config.preact_star if config.preact_enabled else None
     return RescodeMetaExpert(
         gate_proj=gate_proj,

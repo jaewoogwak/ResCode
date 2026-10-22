@@ -206,7 +206,7 @@ def run_rescode_qwen3(
     joint_val_n_sentences: int = 8,
     joint_val_every: int = 10,
     joint_val_seed: int = 4321,
-    # PreAct-STAR (off by default; backward compatible)
+    # Residual-code module (Idea 2)
     preact_star: bool = False,
     preact_mode: str = "gate_bias",     # gate_bias | gate_up_bias | token_adaptive_lowrank | lowrank_preact | lowrank_preact_plus_down | custom
     preact_gate_bias: Optional[bool] = None,
@@ -241,10 +241,10 @@ def run_rescode_qwen3(
     preact_lr_down: float = 3.0e-3,
     fit_preact: bool = False,            # alias for: train preact params at all
     train_post_codes: bool = False,
-    # teacher mode: "online" — keep unmerged model in GPU and forward each batch
-    #               (constant memory ~2x model). DEFAULT, suited to large
+    # teacher mode: "online" - keep unmerged model in GPU and forward each batch
+    #               (constant memory ~2x model); the default, suited to large
     #               calibration data.
-    #             "offline" — pre-collect teacher buffers across full data
+    #             "offline" - pre-collect teacher buffers across full data
     #               (memory grows with N_batches; OK only with small calib).
     teacher_mode: str = "online",
     # output
@@ -265,7 +265,7 @@ def run_rescode_qwen3(
     )
     torch.manual_seed(seed)
 
-    # ---- Build PreActStarConfig (None when disabled — keeps legacy paths) ----
+    # ---- Build PreActStarConfig (None when disabled) ----
     preact_cfg: Optional[PreActStarConfig] = None
     if preact_star:
         # Resolve which sub-modules each preset turns on. Explicit overrides win.
@@ -448,9 +448,9 @@ def run_rescode_qwen3(
 
     # 2) Collect teacher signals BEFORE merging (using the original experts).
     # We collect whenever any fitting will run AND the MSE term will be used:
-    #   - legacy code fitting (`fit_codes=True`) always needs teacher
+    #   - code fitting (`fit_codes=True`) always needs teacher
     #   - joint preact fitting only needs teacher when lambda_mse > 0
-    # Skipping when lambda_mse=0 avoids ~O(N_batches × N_clusters × T × D) CPU
+    # Skipping when lambda_mse=0 avoids ~O(N_batches x N_clusters x T x D) CPU
     # buffer growth that easily exceeds container memory at large N_SENTENCES.
     teacher_buffers = None
     will_fit_preact = (
@@ -463,7 +463,7 @@ def run_rescode_qwen3(
     needs_teacher = star_cfg.fit_codes or (will_fit_preact and float(lambda_mse) > 0.0)
     use_online_teacher = (
         needs_teacher
-        and not star_cfg.fit_codes        # legacy code-fit path needs offline buffers
+        and not star_cfg.fit_codes        # the code-fit path needs offline buffers
         and str(teacher_mode).lower() == "online"
     )
     if needs_teacher and not use_online_teacher:
@@ -475,12 +475,12 @@ def run_rescode_qwen3(
             config=star_cfg,
         )
     elif use_online_teacher:
-        print("[RESCODE-Qwen3] online teacher mode — skipping offline buffer collection.")
+        print("[RESCODE-Qwen3] online teacher mode - skipping offline buffer collection.")
     elif will_fit_preact:
         print("[RESCODE-Qwen3] skipping teacher (lambda_mse=0).")
     val_loader = None
     val_teacher_buffers = None
-    # Build val_loader whenever joint training will run a fit pass — LM-only
+    # Build val_loader whenever joint training will run a fit pass - LM-only
     # val loss is still useful even without teacher (lambda_mse=0).
     # An empty or missing val_data_path disables joint validation (and the
     # best-val checkpoint restore) instead of crashing at load time.
@@ -492,7 +492,7 @@ def run_rescode_qwen3(
         and joint_val_n_sentences > 0
     )
     if wants_joint_val and not has_val_data:
-        print(f"[RESCODE-Qwen3] val_data_path missing ({val_data_path!r}) — joint validation disabled.")
+        print(f"[RESCODE-Qwen3] val_data_path missing ({val_data_path!r}) - joint validation disabled.")
     if wants_joint_val and has_val_data:
         val_loader = _build_dataloader(
             tokenizer,
@@ -511,7 +511,7 @@ def run_rescode_qwen3(
                 config=star_cfg,
             )
         elif use_online_teacher:
-            print("[RESCODE-Qwen3] online val teacher mode — skipping offline val buffer collection.")
+            print("[RESCODE-Qwen3] online val teacher mode - skipping offline val buffer collection.")
         else:
             print("[RESCODE-Qwen3] val_loader built; teacher val collection skipped (lambda_mse=0).")
 
@@ -621,7 +621,7 @@ def run_rescode_qwen3(
         from rescode.merging import compute_lowrank_preact_init_data
         print(f"[RESCODE-Qwen3] computing lowrank_preact init "
               f"(method={preact_cfg.lowrank_init}, target={preact_cfg.lowrank_target}, "
-              f"rank={preact_cfg.lowrank_rank}, α={preact_cfg.lowrank_alpha}, "
+              f"rank={preact_cfg.lowrank_rank}, alpha={preact_cfg.lowrank_alpha}, "
               f"down_init={preact_cfg.down_residual_init})...")
         preact_init_data = compute_lowrank_preact_init_data(
             model=model,
@@ -659,7 +659,7 @@ def run_rescode_qwen3(
             merging_layers=list(range(start_layer, model.config.num_hidden_layers)),
         )
     elif hc_merge == "saliency":
-        print(f"[RESCODE-Qwen3] merging via RESCODE saliency-weighted averaging (δ={rescode_delta})...")
+        print(f"[RESCODE-Qwen3] merging via RESCODE saliency-weighted averaging (delta={rescode_delta})...")
         model = merge_by_groups_with_saliency_weighted(
             model, grouper=grouper,
             merging_layers=list(range(start_layer, model.config.num_hidden_layers)),
@@ -728,7 +728,7 @@ def run_rescode_qwen3(
             del val_teacher_buffers
         if online_teacher is not None:
             online_teacher.cleanup()
-            del teacher_model  # noqa: F821 — defined when use_online_teacher
+            del teacher_model  # noqa: F821 - defined when use_online_teacher
             online_teacher = None
             val_online_teacher = None
         gc.collect()

@@ -2,7 +2,7 @@
 
 The compression pipeline needs a small calibration corpus (a few thousand
 short documents) and an optional validation corpus. The corpora are **not**
-shipped with this repo — download them yourself and place the files here, or
+shipped with this repo - download them yourself and place the files here, or
 override the path via the `TRAIN_DATA` / `VAL_DATA` environment variables when
 launching the shell scripts.
 

@@ -50,6 +50,7 @@ def evaluate_fewshot(
         eval_batch_size: Optional[int] = 4,
         log: Optional[bool] = True,
         output_path: Optional[str] = None,
+        limit: Optional[int] = None,
 ):
     # initialize_tasks(verbosity="WARNING")
     lm = HFLM(
@@ -66,6 +67,7 @@ def evaluate_fewshot(
         random_seed=0,
         numpy_random_seed=1234,
         torch_random_seed=1234,
+        limit=limit if limit else None,
     )
 
     if log:

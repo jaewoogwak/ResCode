@@ -68,7 +68,7 @@ def _build_one_layer(layer_idx: int, group_labels: torch.Tensor) -> ExpertCluste
     """Build a cluster map for one MoE layer from an RESCODE group_labels tensor.
 
     `group_labels[j]` is the cluster label of original expert j. The labels do
-    not need to be contiguous — we re-index to 0..num_clusters-1.
+    not need to be contiguous - we re-index to 0..num_clusters-1.
     """
     if not torch.is_tensor(group_labels):
         group_labels = torch.tensor(group_labels)

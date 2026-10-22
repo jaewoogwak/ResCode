@@ -48,22 +48,20 @@ class PreActStarConfig:
         rho_j(x) = r_j(x) / G_C(x)               (cluster-internal ratio)
         beta_g(x) = sum_j rho_j(x) b_g_j         (preact gate bias)
         beta_u(x) = sum_j rho_j(x) b_u_j         (preact up bias)
-        delta_g(x) = B_g (q_g(x) ⊙ A_g x)        (router-conditioned lowrank)
-        delta_u(x) = B_u (q_u(x) ⊙ A_u x)
-        delta_d(x) = L_d (q_d(x) ⊙ R_d h_C(x))
-        g'(x) = g0(x) + s_g ⊙ beta_g(x) + alpha * delta_g(x)
-        u'(x) = u0(x) + s_u ⊙ beta_u(x) + alpha * delta_u(x)
-        h_C(x) = SiLU(g'(x)) ⊙ u'(x)
+        delta_g(x) = B_g (q_g(x) * A_g x)        (router-conditioned lowrank)
+        delta_u(x) = B_u (q_u(x) * A_u x)
+        delta_d(x) = L_d (q_d(x) * R_d h_C(x))
+        g'(x) = g0(x) + s_g * beta_g(x) + alpha * delta_g(x)
+        u'(x) = u0(x) + s_u * beta_u(x) + alpha * delta_u(x)
+        h_C(x) = SiLU(g'(x)) * u'(x)
         y_C(x) = G_C(x) * (Wbar_d h_C(x) + alpha_d * delta_d(x))
 
-    All new parameters are zero-init (or LoRA-style with B=0) so the cluster
-    output is exactly equal to vanilla RESCODE at construction time. This
-    means `enabled=True` with no fitting must reproduce the existing model
-    bit-for-bit (modulo a single backward-compat output multiply).
+    With the zero-style inits (zero B, or LoRA-style) the cluster output at
+    construction equals the merged expert; the covariance init instead starts
+    each residual at the rank-r projection of the per-expert weight residual.
 
-    `enabled=False` (default) makes this whole struct a no-op; `RescodeConfig.preact_star`
-    is `None` by default, so the existing pipeline keeps the original code
-    paths.
+    `enabled=False` (default) turns the module off; `RescodeConfig.preact_star`
+    is `None` unless the entry point builds one.
     """
 
     enabled: bool = False
@@ -86,12 +84,12 @@ class PreActStarConfig:
     # When enabled, each cluster of size >= 2 holds two parallel rank-r residuals
     # (gate/up/down). Members are partitioned into sub-cluster A and B; the
     # forward computes
-    #   delta_g = α [ B^A (q^A_g ⊙ A^A x) + B^B (q^B_g ⊙ A^B x) ]
-    # where q^A = Σ_{j∈A} ρ_j z^A_j and q^B is analogous (ρ normalized over the
+    #   delta_g = alpha [ B^A (q^A_g * A^A x) + B^B (q^B_g * A^B x) ]
+    # where q^A = sum_{j in A} rho_j z^A_j and q^B is analogous (rho normalized over the
     # whole original cluster).
     # The actual per-cluster sub-cluster assignment is computed externally and
     # passed in via `precomputed_init["sub_assignment"]` (a [num_members] long
-    # tensor in {0,1}). `lowrank_split_method` is informational only — the
+    # tensor in {0,1}). `lowrank_split_method` is informational only - the
     # resolution to an assignment happens in the caller.
     lowrank_dual: bool = False
     lowrank_split_method: str = "balanced"  # balanced | kmeans | coactivation
@@ -99,23 +97,23 @@ class PreActStarConfig:
 
     # ---------------- Cluster forward aggregation choice ---------------------
     # When True (default), the cluster runs paper Eq. (4): for each cluster
-    # member j ∈ C ∩ T(x), evaluate SwiGLU with W_hat_j = W̄ + B·diag(z_j)·A and
-    # take a π_j-weighted sum. Cost is K SwiGLU evaluations per cluster per
+    # member j in C cap T(x), evaluate SwiGLU with W_hat_j = W_bar + B*diag(z_j)*A and
+    # take a pi_j-weighted sum. Cost is K SwiGLU evaluations per cluster per
     # token. When False, the cluster runs the cheaper PreAct path: rho-weighted
     # aggregation of per-member residual params and a single SwiGLU evaluation
     # per cluster per token (first-order approximation under nonlinear SwiGLU).
     paper_postact_aggregation: bool = True
 
     # Down-projection token-adaptive low-rank residual.
-    # Kept as an explicit bool for backward compatibility; target strings that
+    # Explicit switch; target strings that
     # include "down" enable it automatically.
     down_residual: bool = False
     down_residual_rank: int = 16
     down_residual_alpha: float = 1.0
     # covariance (default): same freq/uniform-weighted covariance recipe as
-    #   gate/up — the residual starts at the rank-r projection of the
+    #   gate/up - the residual starts at the rank-r projection of the
     #   per-expert down residual.
-    # zero_L (L = 0, R ~ small) | zero_R (R = 0, L ~ small): Δ = 0 at init.
+    # zero_L (L = 0, R ~ small) | zero_R (R = 0, L ~ small): Delta = 0 at init.
     down_residual_init: str = "covariance"
     down_residual_init_std: float = 1.0e-3
     down_residual_target_clusters: str = "non_singleton"  # non_singleton | all | largest_only | top_error
@@ -278,7 +276,7 @@ class RescodeConfig:
     joint_grad_accum: int = 1            # gradient accumulation
 
     # -- preact-star (NEW, OPTIONAL) -------------------------------------------
-    # `None` means: do nothing; legacy RESCODE stays bit-identical.
+    # `None` disables the residual module.
     preact_star: Optional[PreActStarConfig] = None
 
     # -- meta ------------------------------------------------------------------

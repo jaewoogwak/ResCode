@@ -5,9 +5,9 @@ and returns a binary assignment list of length |member_ids|, with values
 in {0, 1} indicating which sub-cluster each member belongs to.
 
 Methods:
-  A. balanced  — most balanced cut from the hierarchical merge tree.
-  B. kmeans    — 2-way k-means on member expert weight vectors.
-  C. coactivation — 2-way spectral clustering on routing co-occurrence.
+  A. balanced  - most balanced cut from the hierarchical merge tree.
+  B. kmeans    - 2-way k-means on member expert weight vectors.
+  C. coactivation - 2-way spectral clustering on routing co-occurrence.
 """
 from __future__ import annotations
 
@@ -69,11 +69,11 @@ def compute_split_balanced(
     member_set = set(int(m) for m in member_ids)
     # Identify root of cluster: rep of any member.
     if member_ids[0] not in rep:
-        # fallback — list of members not in merge tree at all (shouldn't happen)
+        # fallback - list of members not in merge tree at all (shouldn't happen)
         half = n // 2
         return [0] * half + [1] * (n - half)
     root_rep = rep[member_ids[0]]
-    # Sanity — all members should share the same rep
+    # Sanity - all members should share the same rep
     if not all(rep.get(int(m)) == root_rep for m in member_ids):
         half = n // 2
         return [0] * half + [1] * (n - half)
@@ -160,7 +160,7 @@ def compute_split_coactivation(
     coact_matrix: [K, K] symmetric, M[i,j] = how often member i and member j
     fire together at top-k (or normalized variant). Higher = more similar.
 
-    We convert similarity → distance via D = max(M) - M, then run 2-way
+    We convert similarity -> distance via D = max(M) - M, then run 2-way
     k-means on the rows of D treated as feature vectors. (Equivalent to a
     rough spectral split without needing full eigendecomposition.)
     """

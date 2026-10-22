@@ -35,7 +35,7 @@ def group_experts_by_clustering(
     w1: float = 1.0,
     w2: float = 1.0,
     w3: float = 1.0,
-    max_cluster_size: int = 0,  # accepted for backward compatibility; not enforced here
+    max_cluster_size: int = 0,  # not enforced here
 ):
     experts = experts.to(torch.float)
     experts2 = experts2.to(torch.float) if experts2 is not None else None

@@ -1,19 +1,18 @@
 #!/usr/bin/env bash
 # ============================================================================
-# RESCODE — generic launcher.
-# Reproduces the paper-aligned RESCODE pipeline (I1 + I2 + I3) on any SMoE
-# model and compression ratio.
+# RESCODE - generic launcher.
+# Runs the RESCODE pipeline (I1 + I2 + I3) on any SMoE model and compression
+# ratio.
 #
-# All knobs follow the paper's notation. Internal Python flag names are kept
-# for backward compatibility, but the user-facing shell variables match the
-# paper.
+# The user-facing shell variables follow the paper's notation; they are mapped
+# to the internal Python flags at the bottom of this file.
 #
 #   I1  Saliency-aware restoration
-#       Step 1: cluster formation with output similarity + singleton pin ρ
+#       Step 1: cluster formation with output similarity + singleton pin rho
 #       Step 2: saliency-weighted base construction
-#               α_i^G = (a_i + δ) / Σ_j (a_j + δ)
-#   I2  Diagonal Residual-code:    D_i ≈ B_G · diag(z_i) · A_G
-#   I3  Output-guided fitting:     L = λ_mse · Σ_G L_rec(G) + λ_lm · L_LM
+#               alpha_i^G = (a_i + delta) / sum_j (a_j + delta)
+#   I2  Diagonal Residual-code:    D_i ~= B_G * diag(z_i) * A_G
+#   I3  Output-guided fitting:     L = lambda_mse * L_rec + lambda_lm * L_LM  (paper: L_rec + lambda L_LM)
 #
 # Override anything via env vars. Examples:
 #   MODEL=Qwen/Qwen1.5-MoE-A2.7B-Chat NUM_EXPERTS=30 GPU=0 bash scripts/RESCODE/run.sh
@@ -67,25 +66,33 @@ fi
 # training proceeds normally.
 VAL_DATA="${VAL_DATA:-}"
 if [ -n "$VAL_DATA" ] && [ ! -f "$VAL_DATA" ]; then
-  echo "[RESCODE] val calibration file missing: $VAL_DATA — joint validation disabled." >&2
+  echo "[RESCODE] val calibration file missing: $VAL_DATA - joint validation disabled." >&2
   VAL_DATA=""
 fi
-N_SENTENCES="${N_SENTENCES:-2400}"        # train calibration blocks
-CLUSTER_N_SENTENCES="${CLUSTER_N_SENTENCES:-32}"
-TRAIN_BATCH="${TRAIN_BATCH:-2}"
+N_SENTENCES="${N_SENTENCES:-2400}"        # |D|: calibration sequences (saliency, dist_out, fitting)
+CLUSTER_N_SENTENCES="${CLUSTER_N_SENTENCES:-32}"   # only used by CLUSTERING=descriptor
+TRAIN_BATCH="${TRAIN_BATCH:-1}"           # sequences per forward pass
 EVAL_BATCH="${EVAL_BATCH:-16}"
+EVAL_LIMIT="${EVAL_LIMIT:-0}"             # >0: evaluate only the first N examples per task (quick checks)
 MAX_TOKENS_PER_LAYER="${MAX_TOKENS_PER_LAYER:-32768}"
 MAX_TOKENS_PER_CLUSTER="${MAX_TOKENS_PER_CLUSTER:-32768}"
 
 # ---------------------------------------------------------------------------
-# 3. Clustering — Idea 1 Step 1 (saliency-aware cluster formation)
+# 3. Clustering - Idea 1 Step 1 (saliency-aware cluster formation)
 # ---------------------------------------------------------------------------
+CLUSTERING="${CLUSTERING:-dist}"                 # dist       = saliency a_i, routing frequency omega_i and
+                                                  #              dist_out(i,j) = mean_x ||E_i(x)-E_j(x)||^2
+                                                  #              accumulated over the calibration set D
+                                                  # descriptor = mean-output descriptors on CLUSTER_N_SENTENCES
+CALIB_STATS_CACHE="${CALIB_STATS_CACHE:-}"        # cache file for the statistics (auto when empty)
+LINKAGE="${LINKAGE:-average}"                     # agglomerative linkage on dist_out
+BUDGET_AWARE="${BUDGET_AWARE:-True}"              # count residual bases/codes toward the expert-memory
+                                                  # budget |Theta_hat_E| <= tau|Theta_E| (extra merges spread over layers)
 CLUSTER_BASE="${CLUSTER_BASE:-rescode}"           # rescode | expert-output
                                                   #   rescode = output-similarity + singleton pin (Step 1)
                                                   #   expert-output = output-similarity only (no saliency pin)
-SALIENCY_TOP_TAU="${SALIENCY_TOP_TAU:-15.0}"     # singleton ratio ρ, in %: top-saliency experts pinned
-                                                  # as singletons. ρ=15% at moderate compression,
-                                                  # ρ=0 at aggressive compression (paper Sec. 5.7)
+SALIENCY_TOP_TAU="${SALIENCY_TOP_TAU:-15.0}"     # singleton ratio rho, in %: the top-ceil(rho*N) experts per
+                                                  # layer by saliency stay singletons (paper: rho = 0.15)
 EXCL_MODE="${EXCL_MODE:-per-layer}"
 DESCRIPTOR_TOKENS="${DESCRIPTOR_TOKENS:-all}"    # descriptor token set for output-similarity clustering
                                                   #   all    = every expert evaluated on the SAME
@@ -93,19 +100,19 @@ DESCRIPTOR_TOKENS="${DESCRIPTOR_TOKENS:-all}"    # descriptor token set for outp
                                                   #   routed = mean over tokens routed to each expert
 
 # ---------------------------------------------------------------------------
-# 4. Base construction — Idea 1 Step 2 (saliency-weighted base)
+# 4. Base construction - Idea 1 Step 2 (saliency-weighted base)
 # ---------------------------------------------------------------------------
 BASE_WEIGHT="${BASE_WEIGHT:-saliency}"           # saliency | freq
-                                                  #   saliency = α_i = (a_i+δ)/Σ(a_j+δ)  (paper)
+                                                  #   saliency = alpha_i = (a_i+delta)/sum(a_j+delta)  (paper)
                                                   #   freq     = usage-frequency weighting (HC-SMoE-style)
-DELTA="${DELTA:-1e-3}"                           # δ floor in α_i (Step 2)
+DELTA="${DELTA:-1e-3}"                           # delta floor in alpha_i (Step 2)
 
 # ---------------------------------------------------------------------------
-# 5. Residual structure — Idea 2 (diagonal residual-code)
-#    D_i ≈ B_G · diag(z_i) · A_G
+# 5. Residual structure - Idea 2 (diagonal residual-code)
+#    D_i ~= B_G * diag(z_i) * A_G
 # ---------------------------------------------------------------------------
 PREACT_STAR="${PREACT_STAR:-True}"               # Idea 2 on/off (False = no residual code)
-RANK="${RANK:-128}"                              # r — A_G ∈ R^{r×d_in}, B_G ∈ R^{d_out×r}, z_i ∈ R^r
+RANK="${RANK:-128}"                              # r - A_G in R^{r x d_in}, B_G in R^{d_out x r}, z_i in R^r
 ALPHA="${ALPHA:-2.0}"                            # residual scale
 INIT="${INIT:-covariance}"                       # covariance | lora_zero_B | expert_svd_align
 INIT_ALIGN="${INIT_ALIGN:-hungarian}"            # only used by expert_svd_align init
@@ -116,14 +123,14 @@ TARGET="${TARGET:-gate_up_down}"                 # which projection branches get
 
 # Aggregation choice for the cluster forward (Idea 2 path)
 #   postact (default) : POST-activation aggregation matching paper Eq.(4)
-#                       exactly: for each cluster member j∈C∩T(x), evaluate
-#                       SwiGLU with W_hat_j = W̄+B·diag(z_j)·A and take a
-#                       π_j-weighted sum. Costs K× SwiGLU evaluations per
+#                       exactly: for each cluster member j in C cap T(x), evaluate
+#                       SwiGLU with W_hat_j = W_bar+B*diag(z_j)*A and take a
+#                       pi_j-weighted sum. Costs Kx SwiGLU evaluations per
 #                       cluster per token (memory/throughput scales with
 #                       cluster size).
 #   preact            : router-conditioned PRE-activation modulation.
 #                       SwiGLU is evaluated once per cluster on the
-#                       rho-aggregated pre-activations. Fast (1× SwiGLU
+#                       rho-aggregated pre-activations. Fast (1x SwiGLU
 #                       per cluster per token), first-order approximation
 #                       of paper Eq.(4) under nonlinear SwiGLU.
 AGGREGATION="${AGGREGATION:-postact}"            # postact | preact
@@ -134,19 +141,23 @@ case "$AGGREGATION" in
 esac
 
 # ---------------------------------------------------------------------------
-# 6. Residual training — Idea 3 (output-guided fitting)
-#    L = λ_mse · Σ_G L_rec(G) + λ_lm · L_LM
+# 6. Residual training - Idea 3 (output-guided fitting)
+#    L = lambda_mse * L_rec + lambda_lm * L_LM   (paper: L_rec + lambda L_LM, i.e. lambda_mse = 1, lambda = lambda_lm)
+#    L_rec = 1/(|D| L) sum_x sum_l ||y_hat^l(x) - y^l(x)||^2  over every MoE layer
 # ---------------------------------------------------------------------------
 FIT_PREACT="${FIT_PREACT:-True}"                 # Idea 3 on/off (False = no LM-guided fitting)
 JOINT_EPOCHS="${JOINT_EPOCHS:-3}"                # n_ep = 3 (paper App. E)
-JOINT_GRAD_ACCUM="${JOINT_GRAD_ACCUM:-8}"
-LAMBDA_LM="${LAMBDA_LM:-1.0}"                    # λ_lm — LM cross-entropy weight
-LAMBDA_MSE="${LAMBDA_MSE:-0.01}"                 # λ_mse — coefficient on L_rec(G). Small by design so
-                                                  # results stay close to LM-only while the paper's
-                                                  # output-reconstruction term is exercised. λ_mse>0
-                                                  # keeps a frozen teacher copy on GPU (~2x model
-                                                  # memory); set to 0.0 (LM-only) if memory is tight
-TEACHER_MODE="${TEACHER_MODE:-online}"           # online | offline (online keeps unmerged model on GPU)
+JOINT_GRAD_ACCUM="${JOINT_GRAD_ACCUM:-8}"        # with TRAIN_BATCH=1: 8 sequences per optimizer step
+LAMBDA_LM="${LAMBDA_LM:-1.0}"                    # lambda - LM cross-entropy weight
+LAMBDA_MSE="${LAMBDA_MSE:-1.0}"                  # weight of L_rec (0 = LM-only)
+REC_MODE="${REC_MODE:-local}"                    # local      = original layer on the compressed
+                                                  #              model's layer input (Sec. 4.4),
+                                                  #              each layer fits its own residuals
+                                                  # trajectory = original-model layer outputs (Alg. 1)
+                                                  # cluster    = per-cluster MSE, online teacher (TEACHER_MODE)
+                                                  # trajectory/local keep frozen copies of the merged
+                                                  # experts only (no second model copy)
+TEACHER_MODE="${TEACHER_MODE:-online}"           # REC_MODE=cluster only: online | offline
 JOINT_VAL_N="${JOINT_VAL_N:-200}"
 JOINT_VAL_EVERY="${JOINT_VAL_EVERY:-10}"
 LOG_EVERY="${LOG_EVERY:-1}"
@@ -159,13 +170,14 @@ LR_DOWN="${LR_DOWN:-$LR}"
 LR_SCHEDULER="${LR_SCHEDULER:-cosine}"           # constant | cosine | linear
 WEIGHT_DECAY="${WEIGHT_DECAY:-0.01}"
 GRAD_CLIP="${GRAD_CLIP:-1.0}"
-L2="${L2:-1e-4}"                                 # L2 on A,B,z params
+L2="${L2:-0}"                                    # extra L2 on A,B,z params (0 = AdamW weight decay only, as in the paper)
 L2_DOWN="${L2_DOWN:-$L2}"
 
 # ---------------------------------------------------------------------------
 # 8. Output / load-mode
 # ---------------------------------------------------------------------------
 RESULT_NAME="${RESULT_NAME:-result.txt}"
+SAVE_MODEL="${SAVE_MODEL:-False}"                # also dump the full model state_dict (~16 GB for Qwen)
 
 # Pick model family: detect from MODEL string
 if [[ "$MODEL" == *Mixtral* || "$MODEL" == *mixtral* ]]; then
@@ -186,6 +198,9 @@ OUT_SUFFIX="rescode-${MODEL_FAMILY}-${NUM_EXPERTS}e"
 [ -n "$TAG" ] && OUT_SUFFIX="${OUT_SUFFIX}-${TAG}"
 OUT="results/${MODEL_FAMILY}/${OUT_SUFFIX}"
 mkdir -p "$OUT"
+if [ -z "$CALIB_STATS_CACHE" ]; then
+  CALIB_STATS_CACHE="results/${MODEL_FAMILY}/calib_stats/${CALIB_DATASET}-n${N_SENTENCES}-seed${CALIB_SEED}.pt"
+fi
 
 # Optional reload mode: LOAD=auto -> reuse $OUT/rescode_state.pt and skip fitting
 LOAD="${LOAD:-}"
@@ -201,7 +216,7 @@ fi
 
 # ---------------------------------------------------------------------------
 # 0. Environment (HF cache, accelerate)
-#    User-specific paths — override via env vars before running.
+#    User-specific paths - override via env vars before running.
 #    ACCELERATE: path to the accelerate executable inside your virtualenv
 #                (e.g. $HOME/venvs/rescode/bin/accelerate)
 #    HF_HOME   : HuggingFace cache (where models are downloaded)
@@ -211,6 +226,7 @@ export CUDA_VISIBLE_DEVICES="$GPU"
 export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
 export HUGGINGFACE_HUB_CACHE="${HUGGINGFACE_HUB_CACHE:-$HF_HOME/hub}"
 export TOKENIZERS_PARALLELISM=false
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 export NCCL_P2P_DISABLE=0
 export PYTHONPATH="$(pwd):${PYTHONPATH:-}"
 
@@ -230,18 +246,18 @@ echo "[RESCODE]   model=$MODEL  family=$MODEL_FAMILY"
 echo "[RESCODE]   num_experts=$NUM_EXPERTS  gpu=$GPU  out=$OUT"
 echo "[RESCODE]   calib_dataset=$CALIB_DATASET  train_data=$TRAIN_DATA"
 echo "[RESCODE]   ----- Idea 1 (saliency-aware restoration) -----"
-echo "[RESCODE]   cluster_base=$CLUSTER_BASE  saliency_top_tau=$SALIENCY_TOP_TAU  base_weight=$BASE_WEIGHT  delta=$DELTA  descriptor_tokens=$DESCRIPTOR_TOKENS"
+echo "[RESCODE]   clustering=$CLUSTERING  linkage=$LINKAGE  budget_aware=$BUDGET_AWARE  saliency_top_tau=$SALIENCY_TOP_TAU  base_weight=$BASE_WEIGHT  delta=$DELTA"
 echo "[RESCODE]   ----- Idea 2 (diagonal residual-code) ---------"
 echo "[RESCODE]   preact_star=$PREACT_STAR  rank=$RANK  alpha=$ALPHA  init=$INIT  down_init=$DOWN_INIT  target=$TARGET  aggregation=$AGGREGATION"
 echo "[RESCODE]   ----- Idea 3 (output-guided fitting) ----------"
 echo "[RESCODE]   fit_preact=$FIT_PREACT  epochs=$JOINT_EPOCHS  grad_accum=$JOINT_GRAD_ACCUM  est_opt_steps=$EST_OPT_STEPS"
-echo "[RESCODE]   lambda_lm=$LAMBDA_LM  lambda_mse=$LAMBDA_MSE  teacher=$TEACHER_MODE"
+echo "[RESCODE]   lambda_lm=$LAMBDA_LM  lambda_mse=$LAMBDA_MSE  rec_mode=$REC_MODE  train_batch=$TRAIN_BATCH"
 echo "[RESCODE]   lr=$LR  sched=$LR_SCHEDULER  warmup=$WARMUP_STEPS  wd=$WEIGHT_DECAY  l2=$L2"
 echo "[RESCODE] ============================================================"
 
 # ---------------------------------------------------------------------------
 # Launch
-# Internal Python flags follow the legacy name scheme; user-facing knobs are
+# Internal Python flags keep their own names; user-facing knobs are
 # remapped above.
 # ---------------------------------------------------------------------------
 "$ACC" launch --config_file static/single_gpu.yaml \
@@ -264,7 +280,10 @@ echo "[RESCODE] ============================================================"
   --exclude_top_percent="$SALIENCY_TOP_TAU" \
   --excl_mode="$EXCL_MODE" \
   --cluster=hierarchical \
-  --linkage=average \
+  --linkage="$LINKAGE" \
+  --clustering="$CLUSTERING" \
+  --calib_stats_cache="$CALIB_STATS_CACHE" \
+  --budget_aware="$BUDGET_AWARE" \
   --descriptor_tokens="$DESCRIPTOR_TOKENS" \
   --hc_merge="$BASE_WEIGHT" \
   --rescode_delta="$DELTA" \
@@ -283,7 +302,7 @@ echo "[RESCODE] ============================================================"
   --preact_down_residual_init="$DOWN_INIT" \
   --preact_lowrank_l2_lambda="$L2" \
   --preact_down_l2_lambda="$L2_DOWN" \
-  --preact_normalize_by_std=True \
+  --preact_normalize_by_std=False \
   --preact_grad_clip_norm="$GRAD_CLIP" \
   --preact_lr_lowrank="$LR" \
   --preact_lr_down="$LR_DOWN" \
@@ -292,6 +311,7 @@ echo "[RESCODE] ============================================================"
   --fit_preact=$FIT_PREACT \
   --fit_mode=joint \
   --teacher_mode="$TEACHER_MODE" \
+  --rec_mode="$REC_MODE" \
   --joint_epochs="$JOINT_EPOCHS" \
   --joint_grad_accum="$JOINT_GRAD_ACCUM" \
   --lambda_lm="$LAMBDA_LM" \
@@ -303,6 +323,8 @@ echo "[RESCODE] ============================================================"
   --fit_weight_decay="$WEIGHT_DECAY" \
   --log_every="$LOG_EVERY" \
   --do_eval=True \
+  --eval_limit="$EVAL_LIMIT" \
+  --save_model="$SAVE_MODEL" \
   --output_path="$OUT" \
   --save_rescode_path="$OUT/rescode_state.pt" \
   --result_path="$OUT/$RESULT_NAME" \

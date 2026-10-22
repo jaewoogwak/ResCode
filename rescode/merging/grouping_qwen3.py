@@ -31,7 +31,7 @@ from rescode.utils.helper import print_gpu_memory
 # Qwen3-MoE specific RESCODE zipit-style merge utilities don't exist in
 # rescode.models.qwen.utils (which is Qwen2-only). We import the Qwen2
 # versions as fallbacks so the rare zipit code paths still work when called
-# on a Qwen3 model (the data layout — gate_proj/up_proj/down_proj — is
+# on a Qwen3 model (the data layout - gate_proj/up_proj/down_proj - is
 # identical). ResCODE's main flow (`hc_merge="freq"` or `"saliency"`) does
 # not touch these symbols, so this only matters if a user invokes
 # `merge_by_groups_within_and_across_models`.
@@ -1014,7 +1014,7 @@ class ExpertsGrouperForQwen3MoE(object):
         """Experts in the top k% by top-2 pick count -> per-layer excluded indices.
 
         excl_mode:
-          - "global"   : pick the top k% from the pooled (layer, expert) set (legacy).
+          - "global"   : pick the top k% from the pooled (layer, expert) set.
           - "per-layer": pin exactly round(E*k/100) experts within every layer (default).
 
         compute_all_usages(mode="frequency") must be called beforehand.
@@ -1364,21 +1364,21 @@ class ExpertsGrouperForQwen3MoE(object):
 
             feats = []
             sal = torch.zeros(self.num_experts, dtype=torch.float32)
-            # Paper §4.2 Eq. (saliency):
-            #     a_i = E_x[ 1(i ∈ T_k(x)) · π_i(x) · ||E_i(x)||_2 ]
+            # Paper Sec. 4.2 Eq. (saliency):
+            #     a_i = E_x[ 1(i in T_k(x)) * pi_i(x) * ||E_i(x)||_2 ]
             # The expectation is over ALL tokens (denominator = total_tokens),
             # so the indicator effectively zeroes contributions from non-routed
             # tokens. Equivalently:
-            #     a_i = (1/N) · Σ_{x ∈ R_i} π_i(x) · ||E_i(x)||_2
+            #     a_i = (1/N) * sum_{x in R_i} pi_i(x) * ||E_i(x)||_2
             # where N = total tokens, R_i = tokens routed to expert i.
             total_tokens = float(sel.shape[0])
             # Descriptor token set (`descriptor_tokens`):
-            #   "all"    — o_i = mean of E_i(x) over ALL calibration tokens, so
+            #   "all"    - o_i = mean of E_i(x) over ALL calibration tokens, so
             #              every expert is evaluated on the same token set,
             #              matching the paper's output-distance definition
             #              (default).
-            #   "routed" — o_i = mean of E_i(x) over tokens routed to expert i
-            #              (legacy conditional-mean descriptor).
+            #   "routed" - o_i = mean of E_i(x) over tokens routed to expert i
+            #              (conditional-mean descriptor).
             use_all_tokens = self.descriptor_tokens == "all"
             chunk = 8192
             with torch.no_grad():
@@ -2684,7 +2684,7 @@ def merge_by_groups_with_saliency_weighted(
     group_labels_dict = grouper.group_state_dict()
     for layer_idx in tqdm(
             grouper.sparse_layer_indices,
-            desc=f"[RESCODE] Merging experts with saliency-weighted averaging (δ={delta})..."
+            desc=f"[RESCODE] Merging experts with saliency-weighted averaging (delta={delta})..."
     ):
         if merging_layers is not None and layer_idx not in merging_layers:
             continue
@@ -2696,7 +2696,7 @@ def merge_by_groups_with_saliency_weighted(
                 f"[RESCODE-merge] saliency not populated for {ffn_name}. "
                 f"compute_saliency_and_descriptors must be called first."
             )
-        weights = saliencies + float(delta)  # δ-floored saliency
+        weights = saliencies + float(delta)  # delta-floored saliency
         # Reuse the existing weighted-average function with saliency as weight.
         model.model.layers[layer_idx].mlp = _merge_mlp_experts_by_usage_frequency_weighting(
             ffn=model.model.layers[layer_idx].mlp,

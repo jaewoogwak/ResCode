@@ -64,7 +64,7 @@ def compute_reconstruction_error(
 
 @torch.no_grad()
 def log_preact_statistics(model: nn.Module) -> List[Dict]:
-    """Print + return per-(layer, cluster) PreAct-STAR parameter statistics.
+    """Print + return per-(layer, cluster) residual parameter statistics.
 
     Reports norms of bias codes and lowrank factors so users can see whether
     the optimizer is actually moving them away from their zero-init state.
@@ -109,7 +109,7 @@ def log_giant_cluster_summary(
 ) -> List[Dict]:
     """Pick the largest cluster per layer and print its before/after metrics.
 
-    Qwen 60→30 typically has one giant cluster (≈31 members) per layer with
+    Qwen 60->30 typically has one giant cluster (~31 members) per layer with
     most calibration tokens routed to it; that's where reconstruction is
     hardest, so we surface it explicitly. `layer_results` is the dict
     returned by `fit_all_codes` (or compatible).

@@ -5,23 +5,27 @@ zero-B init:
 
     1. "covariance":
        Use freq-weighted residual covariances as basis.
-         B = top-r eigvecs of   S_out = Σ_i ω_i D_i D_i^T
-         A = top-r eigvecs of   S_in  = Σ_i ω_i D_i^T D_i  (transposed)
-         z_{i,ℓ} = (1/α) b_ℓ^T D_i a_ℓ
-       The model's forward computes effective residual α B diag(z_i) A.
-       With this z, α (1/α) = 1 cancels exactly, so the effective residual
-       at init equals the rank-r projection of D_i — INDEPENDENT of (α, r).
+         B = top-r eigvecs of   S_out = sum_i omega_i D_i D_i^T
+         A = top-r eigvecs of   S_in  = sum_i omega_i D_i^T D_i  (transposed)
+         z_{i,l} = (1/alpha) b_l^T D_i a_l
+       The model's forward computes effective residual alpha B diag(z_i) A.
+       With this z, alpha (1/alpha) = 1 cancels exactly, so the effective residual
+       at init equals the rank-r projection of D_i - INDEPENDENT of (alpha, r).
        This is the actual rank-r approximation of the per-expert residual.
 
     2. "expert_svd_align":
        Truncated SVD per expert, align components across experts via Hungarian
        (or greedy fallback) matching to spectral prototype slots, then build
-       shared B,A by σ-weighted averaging of aligned components. z is then
-       re-projected onto the finalized (B,A) using the same (1/α) scaling.
+       shared B,A by sigma-weighted averaging of aligned components. z is then
+       re-projected onto the finalized (B,A) using the same (1/alpha) scaling.
        Per-expert SVD components are temporary and discarded.
 
-Per-expert residuals are D_i = W_i - W_bar where W_bar = Σ_i ω_i W_i / Σ ω_i
-is the freq-weighted cluster mean (matches RESCODE's `freq` merging recipe).
+Per-expert residuals are D_i = W_i - W_bar. With `base_weight_dict` (the
+default pipeline) W_bar is the saliency-weighted cluster base
+S_G = sum_i alpha_i W_i, alpha_i = (a_i + delta) / sum_j (a_j + delta) of paper Eq. (3), i.e. the
+base the compressed model actually uses, and the covariances are weighted by
+the routing frequencies omega_i (paper App. E). Without it, W_bar is the
+omega-weighted mean (`freq` merging).
 
 Works on gate/up/down token-adaptive lowrank residuals. Gate/up use the
 `method` selected by the caller ("covariance" | "expert_svd_align"); the down
@@ -63,16 +67,16 @@ def compute_covariance_init(
 
     Args:
       D_list: list of K residual matrices, each (m, d).
-      freqs : tensor of K non-negative weights ω_i.
+      freqs : tensor of K non-negative weights omega_i.
       rank  : r, the residual rank.
-      alpha : residual scale α.
+      alpha : residual scale alpha.
 
     Returns:
       B : (m, r)
       A : (r, d)
-      Z : (K, r)  — z_{i,ℓ} = (1/α) b_ℓ^T D_i a_ℓ
-                   so the model's forward `α B diag(z_i) A` equals the
-                   rank-r projection of D_i exactly (α,r-independent).
+      Z : (K, r)  - z_{i,l} = (1/alpha) b_l^T D_i a_l
+                   so the model's forward `alpha B diag(z_i) A` equals the
+                   rank-r projection of D_i exactly (alpha,r-independent).
     """
     assert len(D_list) > 0
     K = len(D_list)
@@ -98,8 +102,8 @@ def compute_covariance_init(
     scale = 1.0 / max(float(alpha), 1e-12)
     for i in range(K):
         D = D_list[i].to(device=device, dtype=dtype)
-        # z_{i,ℓ} = (1/α) b_ℓ^T D_i a_ℓ = (1/α) diag(B^T D A^T)
-        # → model effective residual α B diag(z_i) A = proj_r(D_i) (α,r-independent)
+        # z_{i,l} = (1/alpha) b_l^T D_i a_l = (1/alpha) diag(B^T D A^T)
+        # -> model effective residual alpha B diag(z_i) A = proj_r(D_i) (alpha,r-independent)
         Z[i] = scale * torch.diagonal(B.T @ D @ A_T)
     return B, A, Z
 
@@ -138,7 +142,7 @@ def compute_expert_svd_align_init(
     alpha: float = 1.0,
     alignment: str = "hungarian",
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Init Method 2: per-expert truncated SVD → align → weighted average.
+    """Init Method 2: per-expert truncated SVD -> align -> weighted average.
 
     Args mirror `compute_covariance_init`. `alignment` is "hungarian" (needs
     scipy; falls back to greedy if unavailable) or "greedy".
@@ -172,7 +176,7 @@ def compute_expert_svd_align_init(
     # 3) Align each expert's components to prototype slots
     for i in range(K):
         U_i, S_i, V_i = Us[i], Ss[i], Vs[i]
-        # similarity[a, l] = |u_a^T b_l| · |v_a^T a_l|
+        # similarity[a, l] = |u_a^T b_l| * |v_a^T a_l|
         sim_u = (U_i.T @ B_proto).abs()       # (r, r)
         sim_v = (V_i.T @ A_proto_T).abs()     # (r, r)
         sim = sim_u * sim_v
@@ -191,8 +195,8 @@ def compute_expert_svd_align_init(
     A_T = Vacc / (Vacc.norm(dim=0, keepdim=True) + 1e-12)
     A = A_T.T.contiguous()  # (r, d)
 
-    # 5) Re-project Z onto finalized (B, A) using same (1/α) scaling as
-    # `compute_covariance_init` — keeps init residual = projection.
+    # 5) Re-project Z onto finalized (B, A) using same (1/alpha) scaling as
+    # `compute_covariance_init` - keeps init residual = projection.
     Z = torch.zeros(K, rank, device=device, dtype=dtype)
     scale = 1.0 / max(float(alpha), 1e-12)
     for i in range(K):
@@ -293,9 +297,14 @@ def compute_lowrank_preact_init_data(
     init_down: bool = False,
     down_rank: Optional[int] = None,
     down_alpha: float = 1.0,
+    base_weight_dict: Optional[Dict[str, torch.Tensor]] = None,
 ) -> Dict[int, Dict[int, dict]]:
     """Walk the model layer-by-layer, capture per-expert weight residuals, and
     compute (B, A, Z) for each non-singleton cluster.
+
+    `freq_dict` holds the covariance weights omega_i; `base_weight_dict` (optional)
+    holds the merge weights of the cluster base, so residuals are taken with
+    respect to the same base the merged model uses.
 
     MUST be called BEFORE RESCODE merging overwrites expert weights.
 
@@ -304,7 +313,7 @@ def compute_lowrank_preact_init_data(
     `down_alpha`), stored under the "down" key as (L, R, Z).
 
     If `split_assignments[layer_idx][cluster_id]` is provided (a list of
-    {0,1} of length |members|), the cluster is treated as DUAL — per-sub-cluster
+    {0,1} of length |members|), the cluster is treated as DUAL - per-sub-cluster
     (B,A,Z) triples are returned and the per-cluster entry shape becomes:
         {"gate": {"a": (B_a,A_a,Z_a), "b": (B_b,A_b,Z_b)},
          "up":   {"a": ...,           "b": ...},
@@ -339,13 +348,14 @@ def compute_lowrank_preact_init_data(
         moe_block = _get_moe_block(model, layer_idx, backbone)
         ffn = _ffn_name(layer_idx, backbone)
         freqs_full = freq_dict.get(ffn) if freq_dict is not None else None
+        base_full = base_weight_dict.get(ffn) if base_weight_dict is not None else None
 
         layer_out: Dict[int, dict] = {}
         for cluster_id, member_ids in cmap.cluster_to_experts.items():
             if len(member_ids) < 2:
-                continue  # singleton — skip
+                continue  # singleton - skip
 
-            # Per-member freq weights ω_i (in member order)
+            # Per-member freq weights omega_i (in member order)
             if freqs_full is not None:
                 w_full = freqs_full[torch.as_tensor(member_ids, dtype=torch.long)].clone()
             else:
@@ -377,7 +387,7 @@ def compute_lowrank_preact_init_data(
                 idx_b = [i for i, s in enumerate(sub_asg) if int(s) == 1]
                 # Need at least 1 member per side; if a side is singleton, the
                 # covariance init still returns a degenerate (zero residual)
-                # rank-r triple — that's fine, it just means that side starts
+                # rank-r triple - that's fine, it just means that side starts
                 # near zero and the optimizer can adapt.
                 triples_a = _compute_BAZ_for_subset(
                     member_ids, idx_a, gate_Ws, up_Ws, w_full,
@@ -413,15 +423,21 @@ def compute_lowrank_preact_init_data(
                         cluster_entry[proj][kind] = (B_s, A_s, Z_full)
                 layer_out[cluster_id] = cluster_entry
             else:
-                # Single residual (legacy path)
+                # Single residual
                 w_dev = w_full.to(gate_Ws[0].device).to(torch.float32)
                 if float(w_dev.sum()) <= 0.0:
                     w_dev = torch.ones_like(w_dev)
                 w_norm = w_dev / (w_dev.sum() + 1e-12)
+                if base_full is not None:
+                    # same normalization as the merge (grouping_*._merge_mlp_experts_by_usage_frequency_weighting)
+                    b = base_full[torch.as_tensor(member_ids, dtype=torch.long)].float()
+                    w_norm = (b / (b.sum() + 1e-7)).to(w_dev.device)
                 cluster_entry = {}
                 if target_gate:
                     W_bar_g = sum(w_norm[i] * gate_Ws[i].to(torch.float32)
                                   for i in range(len(member_ids)))
+                    if base_full is not None:  # the merged base is stored in the weight dtype
+                        W_bar_g = W_bar_g.to(gate_Ws[0].dtype).to(torch.float32)
                     D_g = [gate_Ws[i].to(torch.float32) - W_bar_g for i in range(len(member_ids))]
                     B, A, Z = method_fn(D_g, w_dev, rank, alpha)
                     cluster_entry["gate"] = (B.cpu(), A.cpu(), Z.cpu())
@@ -429,6 +445,8 @@ def compute_lowrank_preact_init_data(
                 if target_up:
                     W_bar_u = sum(w_norm[i] * up_Ws[i].to(torch.float32)
                                   for i in range(len(member_ids)))
+                    if base_full is not None:  # the merged base is stored in the weight dtype
+                        W_bar_u = W_bar_u.to(up_Ws[0].dtype).to(torch.float32)
                     D_u = [up_Ws[i].to(torch.float32) - W_bar_u for i in range(len(member_ids))]
                     B, A, Z = method_fn(D_u, w_dev, rank, alpha)
                     cluster_entry["up"] = (B.cpu(), A.cpu(), Z.cpu())
@@ -436,6 +454,8 @@ def compute_lowrank_preact_init_data(
                 if target_down:
                     W_bar_d = sum(w_norm[i] * down_Ws[i].to(torch.float32)
                                   for i in range(len(member_ids)))
+                    if base_full is not None:  # the merged base is stored in the weight dtype
+                        W_bar_d = W_bar_d.to(down_Ws[0].dtype).to(torch.float32)
                     D_d = [down_Ws[i].to(torch.float32) - W_bar_d for i in range(len(member_ids))]
                     B, A, Z = compute_covariance_init(D_d, w_dev, int(down_rank), float(down_alpha))
                     cluster_entry["down"] = (B.cpu(), A.cpu(), Z.cpu())
@@ -450,7 +470,7 @@ def compute_lowrank_preact_init_data(
             n_dual = sum(1 for ce in layer_out.values() if "sub_assignment" in ce)
             print(f"[RESCODE][lowrank-init] layer={layer_idx}  "
                   f"meta_clusters={n_meta}  dual={n_dual}  "
-                  f"method={method}  rank={rank}  α={alpha}  "
+                  f"method={method}  rank={rank}  alpha={alpha}  "
                   f"down={'covariance' if target_down else 'skip'}")
 
     return init_data

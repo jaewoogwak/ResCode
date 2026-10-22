@@ -63,17 +63,32 @@ bash scripts/RESCODE/run_dsmoe16b_32e.sh  # DeepSeek-MoE, 64 -> 32 experts (50%)
 
 Main knobs (override via env vars; all documented inline in `run.sh`):
 - `MODEL`: HuggingFace model name
-- `NUM_EXPERTS`: compressed expert (cluster) count per layer
+- `NUM_EXPERTS`: nominal compressed expert (cluster) count per layer `C`
+- `SALIENCY_TOP_TAU`: singleton ratio rho in % - the top-ceil(rho*N) experts of each layer by saliency stay singletons (default `15.0`)
+- `CLUSTERING`: Idea 1 statistics (`dist` by default: saliency `a_i`, routing frequency `omega_i`, and
+  `dist_out(i,j) = mean_x ||E_i(x) - E_j(x)||^2` accumulated in one pass over the whole calibration set;
+  `descriptor`: mean expert outputs on `CLUSTER_N_SENTENCES` sequences)
+- `LINKAGE`: agglomerative linkage on `dist_out` (default `average`)
+- `BUDGET_AWARE`: count the residual bases/codes toward the expert-memory budget so that
+  `|Theta_hat_E| <= tau|Theta_E|` holds exactly; extra merges are spread over layers, giving layer-specific `C_l` (default `True`)
 - `RANK`: residual rank `r` (default `128`)
-- `ALPHA`: residual scale applied to the low-rank residual (`2.0` for Qwen/DeepSeek, `1.0` for Mixtral)
-- `SALIENCY_TOP_TAU`: singleton ratio ρ in % (`15.0` at moderate compression, `0` at aggressive compression)
+- `ALPHA`: residual scale (a re-parameterization of the codes `z_i`; the initialization does not depend on it)
 - `TARGET`: projection branches to restore (default `gate_up_down`)
-- `JOINT_EPOCHS`: output-guided fitting epochs `n_ep` (default `3`)
+- `LAMBDA_MSE` / `LAMBDA_LM`: weights of `L_rec` and `L_LM` in Idea 3. The paper objective
+  `L_rec + lambda L_LM` is `LAMBDA_MSE=1`, `LAMBDA_LM=lambda`; `LAMBDA_MSE=0` gives the LM term only
+- `REC_MODE`: original-layer target of `L_rec` (`local` by default: the original layer evaluated on the
+  compressed model's layer input, so `y_hat - y = sum pi_i (E_hat_i - E_i)` as in Sec. 4.4 and each layer fits its own
+  residuals; `trajectory`: layer outputs of the original model on its own forward pass). Both keep frozen
+  copies of only the merged experts, not a second model
+- `JOINT_EPOCHS`: output-guided fitting epochs `n_ep` (default `3`); `TRAIN_BATCH` x `JOINT_GRAD_ACCUM`
+  = sequences per optimizer step (default `1 x 8`)
 - `CALIB_DATASET`: calibration corpus (`dclm` by default; `c4`, `slimpajama`, `wikipedia`, `starcoder`)
-- `DESCRIPTOR_TOKENS`: token set for output-similarity clustering (`all` by default; `routed` for the conditional-mean variant)
-- `DOWN_INIT`: down-projection residual init (`covariance` by default; `zero_L`, `zero_R`)
-- `LAMBDA_MSE` / `LAMBDA_LM`: weights of the output-reconstruction and LM terms in Idea 3 (defaults `0.01` / `1.0`)
 - `SEED` / `CALIB_SEED`: optimization and calibration-sampling seeds (defaults `0` / `42`); multi-seed runs vary both jointly
+- `EVAL_LIMIT`: evaluate only the first N examples per task (quick checks; `0` = full benchmarks)
+
+Every run appends the measured expert-memory compression ratio (residual parameters included) to
+`results/<family>/<run>/result.txt`, and caches the calibration statistics under
+`results/<family>/calib_stats/` so runs that share the calibration set reuse them.
 
 Example:
 

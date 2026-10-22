@@ -5,7 +5,7 @@ The function `rescode_qwen3_moe_forward` is monkey-patched onto a
 preserves the original router (no remapping of expert ids, no cluster-level
 top-k re-selection).
 
-Difference vs. Qwen2: Qwen3-MoE has NO shared expert / shared expert gate —
+Difference vs. Qwen2: Qwen3-MoE has NO shared expert / shared expert gate -
 the routed experts are the only path.
 """
 
@@ -13,6 +13,8 @@ from typing import Tuple
 
 import torch
 import torch.nn.functional as F
+
+from .forward_common import add_original_cluster_output
 
 
 def rescode_qwen3_moe_forward(self, hidden_states: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -54,6 +56,9 @@ def rescode_qwen3_moe_forward(self, hidden_states: torch.Tensor) -> Tuple[torch.
             expert = singleton_experts[cluster_id]
             current_hidden = expert(current_state) * routing_weights[top_x, idx, None]
             final_hidden_states.index_add_(0, top_x, current_hidden.to(final_hidden_states.dtype))
+        elif star.get("teacher_active"):
+            add_original_cluster_output(final_hidden_states, hidden_states, member_ids,
+                                        selected_experts, routing_weights, star["orig_experts"])
         else:
             meta = meta_experts[cluster_id]
             cluster_out = meta(

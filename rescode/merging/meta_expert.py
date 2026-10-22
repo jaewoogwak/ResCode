@@ -13,9 +13,9 @@ Three output equations are supported, selected by `preact` presence and
     aggregation of per-member codes c_j. With c_j = 1 this collapses to
     RESCODE's gate_sum * E_bar(x).
 
-(2) PostAct (paper Eq.(4), DEFAULT when preact enabled):
+(2) PostAct (paper Eq. (4), the default when the residual module is enabled):
 
-    For each occurrence a = (token t, member j ∈ C ∩ T(x)):
+    For each occurrence a = (token t, member j in C cap T(x)):
         g_a = (W_bar_g x_t) + alpha * B_g (z_g_j * (A_g x_t)) + beta_g_j (opt)
         u_a = (W_bar_u x_t) + alpha * B_u (z_u_j * (A_u x_t)) + beta_u_j (opt)
         h_a = SiLU(g_a) * u_a
@@ -24,20 +24,20 @@ Three output equations are supported, selected by `preact` presence and
         y_C(t) = sum_{a: token(a)=t} pi_a * y_a   (+ G_C(t) * bias if any)
 
     Equivalent to running a per-member SMoE expert with
-    W_hat_j = W_bar + B diag(z_j) A in each branch (paper-faithful).
+    W_hat_j = W_bar + B diag(z_j) A in each branch.
     Cost: K SwiGLU evaluations per cluster per token.
 
-(3) PreAct-STAR (router-conditioned pre-activation modulation):
+(3) PreAct (router-conditioned pre-activation modulation):
 
     rho_j(x)  = g_j(x) / G_C(x), G_C = sum_j g_j
     beta_g(x) = sum_j rho_j(x) b_g_j
     beta_u(x) = sum_j rho_j(x) b_u_j
-    delta_g   = alpha * B_g (q_g(x) ⊙ A_g x), q_g = sum_j rho_j z_g_j
-    delta_u   = alpha * B_u (q_u(x) ⊙ A_u x), q_u = sum_j rho_j z_u_j
-    delta_d   = alpha_d * L_d (q_d(x) ⊙ R_d h), q_d = sum_j rho_j z_d_j
-    g'(x)     = g0 + s_g ⊙ beta_g + delta_g
-    u'(x)     = u0 + s_u ⊙ beta_u + delta_u
-    h_C(x)    = SiLU(g'(x)) ⊙ u'(x)
+    delta_g   = alpha * B_g (q_g(x) * A_g x), q_g = sum_j rho_j z_g_j
+    delta_u   = alpha * B_u (q_u(x) * A_u x), q_u = sum_j rho_j z_u_j
+    delta_d   = alpha_d * L_d (q_d(x) * R_d h), q_d = sum_j rho_j z_d_j
+    g'(x)     = g0 + s_g * beta_g + delta_g
+    u'(x)     = u0 + s_u * beta_u + delta_u
+    h_C(x)    = SiLU(g'(x)) * u'(x)
     y_C(x)    = G_C(x) * (W_d_bar (a'_C(x) * h_C(x)) + delta_d)
 
     First-order approximation of (2) under nonlinear SwiGLU; cheaper
@@ -64,7 +64,7 @@ def compute_cluster_gate_and_rho(
     local_table: torch.Tensor,         # buffer mapping orig_eid -> local_idx (or -1)
     eps: float = 1.0e-6,
 ):
-    """Build the per-occurrence ρ_j(x) and per-token cluster gate G_C(x) for one cluster.
+    """Build the per-occurrence rho_j(x) and per-token cluster gate G_C(x) for one cluster.
 
     A "occurrence" is a (token, top_k_slot) pair where the selected expert id
     falls in this cluster. A single token can have multiple occurrences if it
@@ -72,12 +72,12 @@ def compute_cluster_gate_and_rho(
 
     Returns
     -------
-    unique_tokens     : [T_C] long       — token ids that are active in this cluster
-    inverse           : [A]   long       — for each occurrence, its index in unique_tokens
-    local_member_ids  : [A]   long       — local id (0..K-1) of the chosen member
-    gates             : [A]   float      — raw routing weight r_j(x) at the occurrence
-    cluster_gate      : [T_C] float      — G_C(x) = sum of gates for that token
-    rho               : [A]   float      — gates / cluster_gate[inverse]
+    unique_tokens     : [T_C] long       - token ids that are active in this cluster
+    inverse           : [A]   long       - for each occurrence, its index in unique_tokens
+    local_member_ids  : [A]   long       - local id (0..K-1) of the chosen member
+    gates             : [A]   float      - raw routing weight r_j(x) at the occurrence
+    cluster_gate      : [T_C] float      - G_C(x) = sum of gates for that token
+    rho               : [A]   float      - gates / cluster_gate[inverse]
     """
     device = selected_experts.device
     flat_se = selected_experts.reshape(-1).to(device)
@@ -129,7 +129,7 @@ class PreActModule(nn.Module):
         - per-member preact biases b_g_j, b_u_j        [K, d_ff]
         - router-conditioned low-rank preact factors:
             gate_A: [r,    d_model]   (random, std=init_std)
-            gate_B: [d_ff, r]         (zero — keeps initial output equal to RESCODE)
+            gate_B: [d_ff, r]         (zero - keeps initial output equal to RESCODE)
             gate_z: [K,    r]         (random, std=init_std)
         - down-proj low-rank residual:
             down_L: [d_model, r_d]
@@ -137,7 +137,7 @@ class PreActModule(nn.Module):
             down_z: [K,      r_d]
             Initialized by `down_residual_init`: "covariance" (default) copies
             the precomputed rank-r projection of the per-expert down residual,
-            "zero_L"/"zero_R" start at Δ=0.
+            "zero_L"/"zero_R" start at Delta=0.
         - optional preact std buffers for normalization:
             gate_preact_std: [d_ff]
             up_preact_std:   [d_ff]
@@ -266,7 +266,7 @@ class PreActModule(nn.Module):
                 config=config, precomputed=pre_d_a, kind="down",
             )
             if self.dual_active:
-                # Dual down residual — same init scheme, separate params.
+                # Dual down residual - same init scheme, separate params.
                 self.down_L_b = nn.Parameter(torch.empty(hidden_size, r_d, device=device, dtype=torch.float32))
                 self.down_R_b = nn.Parameter(torch.empty(r_d, intermediate_size, device=device, dtype=torch.float32))
                 self.down_z_b = nn.Parameter(torch.empty(num_members, r_d, device=device, dtype=torch.float32))
@@ -275,7 +275,7 @@ class PreActModule(nn.Module):
                     config=config, precomputed=pre_d_b, kind="down_b",
                 )
 
-        # Std buffers — start at 1.0 so normalization is a no-op until calibration runs.
+        # Std buffers - start at 1.0 so normalization is a no-op until calibration runs.
         if config.normalize_by_preact_std:
             self.register_buffer(
                 "gate_preact_std",
@@ -302,7 +302,7 @@ class PreActModule(nn.Module):
     ) -> None:
         """Initialize one (A, B, z) triple according to `config.lowrank_init`.
 
-        - "lora_zero_B" (default): A,z ~ N(0, init_std²), B = 0.  ΔW = 0 at init.
+        - "lora_zero_B" (default): A,z ~ N(0, init_std^2), B = 0.  Delta W = 0 at init.
         - "covariance" / "expert_svd_align": use precomputed (B, A, Z) triple
           if provided. Falls back to LoRA-style init with a warning if not.
         """
@@ -310,7 +310,7 @@ class PreActModule(nn.Module):
         if init_mode == "lora_zero_B" or precomputed is None:
             if init_mode != "lora_zero_B" and precomputed is None:
                 print(f"[RESCODE][PreActModule][warn] lowrank_init={init_mode} requested "
-                      f"for {kind} but no precomputed_init provided — falling back to lora_zero_B.")
+                      f"for {kind} but no precomputed_init provided - falling back to lora_zero_B.")
             A.data.normal_(mean=0.0, std=config.lowrank_init_std)
             B.data.zero_()
             Z.data.normal_(mean=0.0, std=config.lowrank_init_std)
@@ -350,16 +350,16 @@ class PreActModule(nn.Module):
         """Initialize one down-residual (L, R, z) triple per `config.down_residual_init`.
 
         - "covariance" (default): copy the precomputed (L, R, Z) triple so the
-          effective residual α_d·L·diag(z_j)·R starts at the rank-r projection
-          of the per-expert down residual — same recipe as gate/up. Falls back
+          effective residual alpha_d*L*diag(z_j)*R starts at the rank-r projection
+          of the per-expert down residual - same recipe as gate/up. Falls back
           to zero_L with a warning when no precomputed triple is available.
-        - "zero_L": L = 0, R,z ~ N(0, init_std²).  Δ = 0 at init.
-        - "zero_R": R = 0, L,z ~ N(0, init_std²).  Δ = 0 at init.
+        - "zero_L": L = 0, R,z ~ N(0, init_std^2).  Delta = 0 at init.
+        - "zero_R": R = 0, L,z ~ N(0, init_std^2).  Delta = 0 at init.
         """
         init_mode = config.down_residual_init
         if init_mode == "covariance" and precomputed is None:
             print(f"[RESCODE][PreActModule][warn] down_residual_init=covariance requested "
-                  f"for {kind} but no precomputed_init provided — falling back to zero_L.")
+                  f"for {kind} but no precomputed_init provided - falling back to zero_L.")
             init_mode = "zero_L"
         if init_mode == "covariance":
             # Stored by `compute_lowrank_preact_init_data` as (B, A, Z) = (L, R, Z).
@@ -434,7 +434,7 @@ class RescodeMetaExpert(nn.Module):
         lowrank   -> Z: [num_members, rank], U: [d_ff, rank];
                      code_j = 1 + Z_j @ U.T
 
-    PreAct-STAR (optional, off by default): if `preact_config` is provided and
+    Residual module (optional): if `preact_config` is provided and
     enabled, the module also carries router-conditioned preactivation
     parameters. See module docstring at top of file for the equations.
     """
@@ -491,7 +491,7 @@ class RescodeMetaExpert(nn.Module):
             for p in self._code_parameters():
                 p.requires_grad_(False)
 
-        # Optional PreAct-STAR module.
+        # Optional residual module.
         self.preact: Optional[PreActModule] = None
         if preact_config is not None and preact_config.enabled:
             self.preact = PreActModule(
@@ -625,7 +625,7 @@ class RescodeMetaExpert(nn.Module):
         code_agg: torch.Tensor,         # [N] or [N, d_ff]
         gate_sum: torch.Tensor,         # [N]
     ) -> torch.Tensor:
-        """Vanilla RESCODE forward (no preact). Kept for backward compat."""
+        """Code-only forward (no residual module)."""
         proj_dtype = self.gate_proj.weight.dtype
         x = unique_x.to(proj_dtype) if unique_x.dtype != proj_dtype else unique_x
         h = self.act_fn(self.gate_proj(x)) * self.up_proj(x)  # [N, d_ff]
@@ -651,7 +651,7 @@ class RescodeMetaExpert(nn.Module):
         num_unique: int,
         accum_dtype: torch.dtype = torch.float32,
     ):
-        """Aggregate ρ-weighted preact biases / lowrank codes for the cluster.
+        """Aggregate rho-weighted preact biases / lowrank codes for the cluster.
 
         Returns a dict keyed by what the preact path needs:
             beta_g [N, d_ff] or None
@@ -771,7 +771,7 @@ class RescodeMetaExpert(nn.Module):
         num_unique: int,
         accum_dtype: torch.dtype = torch.float32,
     ) -> torch.Tensor:
-        """Paper-faithful per-expert SwiGLU forward (Eq. 4) then pi-weighted sum.
+        """Per-expert SwiGLU forward (Eq. 4) followed by the pi-weighted sum.
 
         For each occurrence a = (token t, member j):
             g_a = (W_bar_g x_t) + alpha * B_g (z_g_j * (A_g x_t)) + beta_g_j (opt)
@@ -866,7 +866,7 @@ class RescodeMetaExpert(nn.Module):
         gate_sum: torch.Tensor,
         preact_aggs: dict,
     ) -> torch.Tensor:
-        """PreAct-STAR forward path on already-aggregated per-token quantities.
+        """PreAct forward path on already-aggregated per-token quantities.
 
         Computes y_C = G_C * (Wbar_d (a' * h) + alpha_d L(q_d * R(a' * h))), where
             h = SiLU(g0 + s_g*beta_g + delta_g) * (u0 + s_u*beta_u + delta_u)
@@ -947,7 +947,7 @@ class RescodeMetaExpert(nn.Module):
         # base down-proj output (in fp32 for residual stability)
         base = F.linear(h_coded.to(proj_dtype), self.down_proj.weight, bias=None).to(accum_dtype)
 
-        # token-adaptive down residual Δy = L(q_d ⊙ R h)
+        # token-adaptive down residual Delta y = L(q_d * R h)
         if cfg.has_lowrank_down:
             tmp = F.linear(h_coded, self.preact.down_R.to(accum_dtype))           # [N, r_d]
             qd = preact_aggs.get("q_d")
@@ -968,7 +968,7 @@ class RescodeMetaExpert(nn.Module):
             base = base + self.down_proj.bias.to(accum_dtype).unsqueeze(0)
             # NOTE: in vanilla RESCODE this contributes gate_sum * bias; we
             # also multiply by gate_sum below, so the final contribution is
-            # gate_sum * (W_d h + bias) — same shape, semantics preserved.
+            # gate_sum * (W_d h + bias) - same shape, semantics preserved.
 
         out = gate_sum.unsqueeze(-1).to(accum_dtype) * base
         return out

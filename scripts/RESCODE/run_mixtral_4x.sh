@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Mixtral-8x7B-v0.1  →  8 / 4 experts  (50% compression)
+# Mixtral-8x7B-v0.1  ->  8 / 4 experts  (50% compression)
 #
 # Defaults follow the training protocol in the paper's Appendix E. Under
-# aggressive compression the singleton ratio ρ (SALIENCY_TOP_TAU) is set to 0
+# aggressive compression the singleton ratio rho (SALIENCY_TOP_TAU) is set to 0
 # (Section 5.7); saliency-weighted base construction (Idea-1 Step-2) stays on.
 # Paper reference at this setting: Table 3, avg = 0.6096.
 #
-# Idea 1: ρ=0, saliency-weighted base.
-# Idea 2: r=128, α=1.0, covariance init, target=gate_up_down.
-# Idea 3: joint LM + small L_rec (λ_mse=0.01, λ_lm=1), 3 epochs.
-#         λ_mse>0 keeps a frozen teacher copy on GPU (~2× model memory);
-#         set LAMBDA_MSE=0 for the LM-only variant if memory is tight.
+# Idea 1: rho=0, saliency-weighted base.
+# Idea 2: r=128, alpha=1.0, covariance init, target=gate_up_down.
+# Idea 3: output-guided fitting, 3 epochs, 8 sequences per optimizer step.
+#         LM term only by default (LAMBDA_MSE=0): L_rec keeps frozen
+#         copies of the merged experts on the GPU (~+55 GB for Mixtral), which does
+#         not fit next to the model on smaller GPUs. Set LAMBDA_MSE=1 LAMBDA_LM=<lambda>
+#         to use the full objective L_rec + lambda L_LM when memory allows.
 # ============================================================================
 
 set -e
@@ -27,7 +29,7 @@ if [ -z "${TAG:-}" ]; then
   export TAG="calib-${CALIB_DATASET}"
 fi
 
-# --- 3. Idea 1 Step 1 (clustering — pin disabled at aggressive ratio) -----
+# --- 3. Idea 1 Step 1 (clustering - pin disabled at aggressive ratio) -----
 export CLUSTER_BASE="${CLUSTER_BASE:-rescode}"
 export SALIENCY_TOP_TAU="${SALIENCY_TOP_TAU:-0}"
 
@@ -45,7 +47,7 @@ export TARGET="${TARGET:-gate_up_down}"
 export JOINT_EPOCHS="${JOINT_EPOCHS:-3}"
 export JOINT_GRAD_ACCUM="${JOINT_GRAD_ACCUM:-8}"
 export LAMBDA_LM="${LAMBDA_LM:-1.0}"
-export LAMBDA_MSE="${LAMBDA_MSE:-0.01}"
+export LAMBDA_MSE="${LAMBDA_MSE:-0}"       # LM term only (see header); 1 = full L_rec + lambda L_LM
 
 # --- 2. Data --------------------------------------------------------------
 export N_SENTENCES="${N_SENTENCES:-2080}"

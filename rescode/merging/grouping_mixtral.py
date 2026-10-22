@@ -602,17 +602,17 @@ class ExpertsGrouperForMixtral(object):
 
             feats = []
             sal = torch.zeros(self.num_experts, dtype=torch.float32)
-            # Paper §4.2 Eq. (saliency):
-            #     a_i = E_x[ 1(i ∈ T_k(x)) · π_i(x) · ||E_i(x)||_2 ]
+            # Paper Sec. 4.2 Eq. (saliency):
+            #     a_i = E_x[ 1(i in T_k(x)) * pi_i(x) * ||E_i(x)||_2 ]
             # Expectation over ALL tokens, not just routed ones.
             total_tokens = float(sel.shape[0])
             # Descriptor token set (`descriptor_tokens`):
-            #   "all"    — o_i = mean of E_i(x) over ALL calibration tokens, so
+            #   "all"    - o_i = mean of E_i(x) over ALL calibration tokens, so
             #              every expert is evaluated on the same token set,
             #              matching the paper's output-distance definition
             #              (default).
-            #   "routed" — o_i = mean of E_i(x) over tokens routed to expert i
-            #              (legacy conditional-mean descriptor).
+            #   "routed" - o_i = mean of E_i(x) over tokens routed to expert i
+            #              (conditional-mean descriptor).
             use_all_tokens = self.descriptor_tokens == "all"
             chunk = 8192
             with torch.no_grad():
@@ -1743,29 +1743,17 @@ def _merge_mlp_experts_by_usage_frequency_weighting(
         group_labels: torch.LongTensor,
         usage_frequencies: torch.Tensor,
 ) -> MixtralSparseMoeBlock:
-
+    """Weighted average of each group's experts (accumulated in fp32), bound to its first member."""
     for label in group_labels.unique():
         expert_indices = torch.where(group_labels == label)[0]
-        # print(f"group {label} with experts {expert_indices}, weight {usage_frequencies[expert_indices]}")
-        w1_weight_list = torch.stack(
-            [ffn.experts[expert_idx].w1.weight * usage_frequencies[expert_idx]
-             for expert_idx in expert_indices], dim=0
-        )
-        w2_weight_list = torch.stack(
-            [ffn.experts[expert_idx].w2.weight * usage_frequencies[expert_idx]
-             for expert_idx in expert_indices], dim=0
-        )
-        w3_weight_list = torch.stack(
-            [ffn.experts[expert_idx].w3.weight * usage_frequencies[expert_idx]
-             for expert_idx in expert_indices], dim=0
-        )
-        w1_weight = torch.sum(w1_weight_list, dim=0) / (torch.sum(usage_frequencies[expert_indices], dim=0) + FP32_EPS)
-        w2_weight = torch.sum(w2_weight_list, dim=0) / (torch.sum(usage_frequencies[expert_indices], dim=0) + FP32_EPS)
-        w3_weight = torch.sum(w3_weight_list, dim=0) / (torch.sum(usage_frequencies[expert_indices], dim=0) + FP32_EPS)
-
-        ffn.experts[expert_indices[0]].w1.weight.copy_(w1_weight)
-        ffn.experts[expert_indices[0]].w2.weight.copy_(w2_weight)
-        ffn.experts[expert_indices[0]].w3.weight.copy_(w3_weight)
+        weights = usage_frequencies[expert_indices].float()
+        weights = weights / (weights.sum() + FP32_EPS)
+        for proj in ('w1', 'w3', 'w2'):
+            merged = sum(
+                weights[k] * getattr(ffn.experts[e], proj).weight.float()
+                for k, e in enumerate(expert_indices.tolist())
+            )
+            getattr(ffn.experts[expert_indices[0]], proj).weight.copy_(merged)
 
         for expert_idx in expert_indices[1:]:
             # Binding merged experts to the first of them
@@ -2861,7 +2849,7 @@ def merge_by_groups_with_saliency_weighted(
     group_labels_dict = grouper.group_state_dict()
     for layer_idx in tqdm(
             grouper.sparse_layer_indices,
-            desc=f"[RESCODE] Mixtral merging with saliency-weighted averaging (δ={delta})..."
+            desc=f"[RESCODE] Mixtral merging with saliency-weighted averaging (delta={delta})..."
     ):
         if merging_layers is not None and layer_idx not in merging_layers:
             continue

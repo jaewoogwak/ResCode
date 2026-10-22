@@ -2,15 +2,15 @@
 Saliency-weighted hierarchical clustering for MoE expert merging.
 
 Objective:
-    cost(C) = Σ_{i ∈ C} s_i · ‖ f_i − base(C) ‖₂
-    total   = Σ_C cost(C)
+    cost(C) = sum_{i in C} s_i * || f_i - base(C) ||_2
+    total   = sum_C cost(C)
 
     where f_i is a per-expert feature (e.g. routed-output mean) and s_i is a
-    pruning-style saliency (REAP: mean over routed tokens of g̃·‖f(x)‖).
+    pruning-style saliency (REAP: mean over routed tokens of g_tilde*||f(x)||).
 
 Low-saliency experts are "cheap to merge" (their reconstruction error is
 down-weighted), while high-saliency experts tend to stay as singletons or
-form tight clusters — directly aligned with end-to-end layer-output error.
+form tight clusters - directly aligned with end-to-end layer-output error.
 
 The base(C) used in the cost matches the base that the merger will later use
 (e.g., freq-weighted average), so the clustering objective is an upper bound
@@ -61,18 +61,18 @@ def saliency_weighted_hierarchical_clustering(
     """Greedy hierarchical clustering minimizing total saliency-weighted reconstruction cost.
 
     Args:
-        features: (N, D) — per-expert feature vectors.
-        saliencies: (N,) — per-expert saliency (≥ 0).
+        features: (N, D) - per-expert feature vectors.
+        saliencies: (N,) - per-expert saliency (>= 0).
         num_groups: target number of clusters K.
-        freq: (N,) — per-expert usage frequency (for base_weighting='freq').
+        freq: (N,) - per-expert usage frequency (for base_weighting='freq').
         base_weighting: how base(C) is computed.
-            'freq'     → Σ freq_i · f_i / Σ freq_i   (matches freq merge)
-            'uniform'  → mean of f_i
-            'saliency' → Σ s_i · f_i / Σ s_i
+            'freq'     -> sum freq_i * f_i / sum freq_i   (matches freq merge)
+            'uniform'  -> mean of f_i
+            'saliency' -> sum s_i * f_i / sum s_i
 
     Returns:
-        labels: (N,) LongTensor — cluster id per expert, contiguous starting at 0.
-        dom_experts: list[int] — representative (medoid) expert per cluster.
+        labels: (N,) LongTensor - cluster id per expert, contiguous starting at 0.
+        dom_experts: list[int] - representative (medoid) expert per cluster.
     """
     device = features.device
     N = features.shape[0]
@@ -103,7 +103,7 @@ def saliency_weighted_hierarchical_clustering(
         best_delta = float("inf")
         best_pick = None
 
-        # O(K^2) pair search; K is tiny (≤60) so fine.
+        # O(K^2) pair search; K is tiny (<=60) so fine.
         for ii in range(len(keys)):
             for jj in range(ii + 1, len(keys)):
                 ca, cb = keys[ii], keys[jj]
@@ -125,7 +125,7 @@ def saliency_weighted_hierarchical_clustering(
             total = sum(cluster_costs.values())
             print(
                 f"  [sal-hier] step {step}: merge ({ca},{cb}) |C|={len(members)} "
-                f"Δ={best_delta:.4e} total={total:.4e}"
+                f"Delta={best_delta:.4e} total={total:.4e}"
             )
         step += 1
 
@@ -157,23 +157,23 @@ def saliency_weighted_kmedoids(
     """Saliency-weighted K-medoids (PAM).
 
     Objective:
-        min  Σ_C  Σ_{i ∈ C} s_i · ‖f_i − f_{m(C)}‖₂    s.t. m(C) ∈ C ⊂ {1..N}
+        min  sum_C  sum_{i in C} s_i * ||f_i - f_{m(C)}||_2    s.t. m(C) in C subset of {1..N}
 
-    - Assignment step:   expert i → cluster of nearest medoid (unweighted distance).
-    - Medoid update:     for cluster C, pick m* = argmin_{j ∈ C} Σ_{i ∈ C} s_i · d(f_i, f_j).
+    - Assignment step:   expert i -> cluster of nearest medoid (unweighted distance).
+    - Medoid update:     for cluster C, pick m* = argmin_{j in C} sum_{i in C} s_i * d(f_i, f_j).
                          High-saliency members thus pull the medoid toward themselves.
-    - Init:              saliency-biased k-means++ — next seed ∝ s_i · min_m d(f_i, f_m)².
+    - Init:              saliency-biased k-means++ - next seed proportional to s_i * min_m d(f_i, f_m)^2.
 
     Args:
         features: (N, D).
-        saliencies: (N,) ≥ 0.
+        saliencies: (N,) >= 0.
         num_groups: K.
         max_iter: cap on PAM swap iterations.
         seed: RNG seed for init.
 
     Returns:
         labels: (N,) LongTensor, contiguous 0..K-1.
-        dom_experts: list[int] — the K medoid indices.
+        dom_experts: list[int] - the K medoid indices.
     """
     device = features.device
     N = features.shape[0]
@@ -212,7 +212,7 @@ def saliency_weighted_kmedoids(
             members = torch.where(assignments == k)[0]
             if members.numel() == 0:
                 continue
-            # cost(j) = Σ_{i ∈ C} s_i · d(f_i, f_j)  for j ∈ C
+            # cost(j) = sum_{i in C} s_i * d(f_i, f_j)  for j in C
             sub_dist = dist[members][:, members]               # (|C|, |C|)
             weighted = (saliencies[members].unsqueeze(1) * sub_dist).sum(dim=0)  # (|C|,)
             best_local = int(weighted.argmin().item())
@@ -254,21 +254,21 @@ def layer_recon_hierarchical_clustering(
     """Greedy hierarchical clustering minimizing layer-output reconstruction error.
 
     Objective:
-        cost(C) = E_t || Σ_{i ∈ C} g_i(t) · (f_i(t) − μ_C) ||²
-                = (1/T) Σ_t || M_C(t) − G_C(t)·μ_C ||²
-        μ_C     = Σ_t M_C(t) / Σ_t G_C(t)           (gate-weighted mean activation)
-        M_C(t)  = Σ_{i ∈ C ∩ topk(t)} g_i(t) · f_i(t)
-        G_C(t)  = Σ_{i ∈ C ∩ topk(t)} g_i(t)
+        cost(C) = E_t || sum_{i in C} g_i(t) * (f_i(t) - mu_C) ||^2
+                = (1/T) sum_t || M_C(t) - G_C(t)*mu_C ||^2
+        mu_C     = sum_t M_C(t) / sum_t G_C(t)           (gate-weighted mean activation)
+        M_C(t)  = sum_{i in C cap topk(t)} g_i(t) * f_i(t)
+        G_C(t)  = sum_{i in C cap topk(t)} g_i(t)
 
     The objective captures 3 signals simultaneously:
-      - Diagonal (i=j):  saliency-style ‖g_i f_i‖² — smaller experts get merged first
-      - Off-diag (i≠j): g_i(t)g_j(t)·⟨f_i, f_j⟩ — gate co-activation × output correlation
-                        → experts firing at different timesteps are cheap to merge
+      - Diagonal (i=j):  saliency-style ||g_i f_i||^2 - smaller experts get merged first
+      - Off-diag (i != j): g_i(t)g_j(t)*<f_i, f_j> - gate co-activation x output correlation
+                        -> experts firing at different timesteps are cheap to merge
 
     Args:
-        selected: (T, K) long — expert index per top-k slot
-        gates:    (T, K) float — renormalized top-k gate values
-        outs:     (T, K, D) float — expert output at each (token, slot)
+        selected: (T, K) long - expert index per top-k slot
+        gates:    (T, K) float - renormalized top-k gate values
+        outs:     (T, K, D) float - expert output at each (token, slot)
         num_experts: E
         num_groups: target K clusters
 
@@ -281,7 +281,7 @@ def layer_recon_hierarchical_clustering(
     device = outs.device
 
     def _build_mask(members_list):
-        """(T, K_topk) boolean — True where expert slot is in members."""
+        """(T, K_topk) boolean - True where expert slot is in members."""
         members_t = torch.tensor(members_list, device=device, dtype=torch.long)
         return torch.isin(selected, members_t)
 
@@ -325,7 +325,7 @@ def layer_recon_hierarchical_clustering(
             total = sum(cluster_costs.values())
             print(
                 f"  [layer-recon] step {step}: merge ({ca},{cb}) |C|={len(members)} "
-                f"Δ={best_delta:.4e} total={total:.4e}"
+                f"Delta={best_delta:.4e} total={total:.4e}"
             )
         step += 1
 

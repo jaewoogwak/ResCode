@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Mixtral-8x7B-v0.1  →  8 / 6 experts  (25% compression)
+# Mixtral-8x7B-v0.1  ->  8 / 6 experts  (25% compression)
 #
 # Defaults follow the training protocol in the paper's Appendix E.
 # Paper reference at this setting: Table 3, avg = 0.6485.
 #
-# Idea 1: ρ=15% singleton pin, saliency-weighted base.
-# Idea 2: r=128, α=1.0, covariance init, target=gate_up_down.
-# Idea 3: joint LM + small L_rec (λ_mse=0.01, λ_lm=1), 3 epochs (≈ 390 opt steps).
-#
-# Mixtral is large — LAMBDA_MSE>0 needs roughly 2× model memory due to the
-# online teacher forward; set LAMBDA_MSE=0 for the LM-only variant if memory
-# is tight.
+# Idea 1: rho=15% singleton pin, saliency-weighted base.
+# Idea 2: r=128, alpha=1.0, covariance init, target=gate_up_down.
+# Idea 3: output-guided fitting, 3 epochs, 8 sequences per optimizer step.
+#         LM term only by default (LAMBDA_MSE=0): L_rec keeps frozen
+#         copies of the merged experts on the GPU (~+55 GB for Mixtral), which does
+#         not fit next to the model on smaller GPUs. Set LAMBDA_MSE=1 LAMBDA_LM=<lambda>
+#         to use the full objective L_rec + lambda L_LM when memory allows.
 # ============================================================================
 
 set -e
@@ -40,7 +40,7 @@ export TARGET="${TARGET:-gate_up_down}"
 export JOINT_EPOCHS="${JOINT_EPOCHS:-3}"
 export JOINT_GRAD_ACCUM="${JOINT_GRAD_ACCUM:-8}"
 export LAMBDA_LM="${LAMBDA_LM:-1.0}"
-export LAMBDA_MSE="${LAMBDA_MSE:-0.01}"
+export LAMBDA_MSE="${LAMBDA_MSE:-0}"       # LM term only (see header); 1 = full L_rec + lambda L_LM
 
 # --- 2. Data --------------------------------------------------------------
 export N_SENTENCES="${N_SENTENCES:-2080}"

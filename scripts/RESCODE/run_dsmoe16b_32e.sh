@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-# DeepSeek-MoE-16B-Base (V1)  →  64 / 32 experts  (50% compression)
+# DeepSeek-MoE-16B-Base (V1)  ->  64 / 32 experts  (50% compression)
 #
 # Defaults follow the training protocol in the paper's Appendix E.
 # Paper reference at this setting: Table 9, avg = 0.5018.
@@ -11,6 +11,11 @@
 #
 # Stock modeling does NOT accept `output_router_logits=True`. Prefer
 # CLUSTER_BASE=rescode (the default) or expert-output.
+#
+# Idea 3: output-guided fitting, 3 epochs, 8 sequences per optimizer step.
+#         LM term only by default (LAMBDA_MSE=0): L_rec keeps frozen
+#         copies of the merged experts on the GPU. Set LAMBDA_MSE=1 LAMBDA_LM=<lambda>
+#         to use the full objective L_rec + lambda L_LM when memory allows.
 #
 # Override via env vars.
 # ============================================================================
@@ -41,7 +46,7 @@ export TARGET="${TARGET:-gate_up_down}"
 export JOINT_EPOCHS="${JOINT_EPOCHS:-3}"
 export JOINT_GRAD_ACCUM="${JOINT_GRAD_ACCUM:-8}"
 export LAMBDA_LM="${LAMBDA_LM:-1.0}"
-export LAMBDA_MSE="${LAMBDA_MSE:-0.01}"
+export LAMBDA_MSE="${LAMBDA_MSE:-0}"       # LM term only (see header); 1 = full L_rec + lambda L_LM
 
 # --- 2. Data --------------------------------------------------------------
 export N_SENTENCES="${N_SENTENCES:-2400}"

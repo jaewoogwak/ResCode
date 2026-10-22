@@ -131,7 +131,7 @@ class MixtralConfig(PretrainedConfig):
             sliding_window=None,
             attention_dropout=0.0,
             num_experts_per_tok=2,
-            num_local_experts: Union[int, list] = 8,  # 🔍
+            num_local_experts: Union[int, list] = 8,
             output_router_logits=False,
             router_aux_loss_coef=0.001,
             **kwargs,

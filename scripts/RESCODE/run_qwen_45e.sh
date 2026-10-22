@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Qwen1.5-MoE-A2.7B-Chat  →  60 / 45 experts  (25% compression)
+# Qwen1.5-MoE-A2.7B-Chat  ->  60 / 45 experts  (25% compression)
 #
-# Defaults follow the training protocol in the paper's Appendix E, with the
-# singleton ratio ρ=15% used under moderate compression (Section 5.7).
+# Defaults follow the training protocol in the paper's Appendix E.
 # Paper reference at this setting: Table 3, avg = 0.5878.
+# This configuration measured avg = 0.5897 (seed 0 / calib seed 42) at
+# 25.02% expert-memory compression (residual bases and codes included).
 #
-# Idea 1 (saliency-aware restoration): ρ=15% singleton pin, saliency-weighted base.
-# Idea 2 (diagonal residual-code):     r=128, α=2.0, covariance init, target=gate_up_down.
-# Idea 3 (output-guided fitting):      joint LM + small L_rec (λ_mse=0.01, λ_lm=1), 3 epochs.
-#                                      Set LAMBDA_MSE=0 for the LM-only variant.
+# Idea 1: rho = 0.15 singleton pin, saliency a_i / routing frequency omega_i /
+#         dist_out over the full calibration set, saliency-weighted base.
+# Idea 2: r = 128, alpha = 2.0, covariance init (residuals w.r.t. S_G), gate/up/down.
+# Idea 3: L_rec + lambda L_LM with lambda = 0.3 (REC_MODE=local), 3 epochs,
+#         8 sequences per optimizer step.
 #
-# Override anything via env vars, e.g.:
-#   ALPHA=4.0 INIT=expert_svd_align bash scripts/RESCODE/run_qwen_45e.sh
+# Override via env vars.
 # ============================================================================
 
 set -e
@@ -40,8 +41,9 @@ export TARGET="${TARGET:-gate_up_down}"
 # --- 6. Idea 3 (output-guided fitting) ------------------------------------
 export JOINT_EPOCHS="${JOINT_EPOCHS:-3}"
 export JOINT_GRAD_ACCUM="${JOINT_GRAD_ACCUM:-8}"
-export LAMBDA_LM="${LAMBDA_LM:-1.0}"
-export LAMBDA_MSE="${LAMBDA_MSE:-0.01}"
+export LAMBDA_LM="${LAMBDA_LM:-0.3}"
+export LAMBDA_MSE="${LAMBDA_MSE:-1.0}"
+export REC_MODE="${REC_MODE:-local}"
 
 # --- 2. Data --------------------------------------------------------------
 export N_SENTENCES="${N_SENTENCES:-2400}"
