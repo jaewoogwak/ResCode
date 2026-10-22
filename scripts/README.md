@@ -17,6 +17,7 @@ All knobs are documented inline in `run.sh`. Common overrides:
 
 ```bash
 GPU=0 NUM_EXPERTS=4 TAG=run01 bash scripts/RESCODE/run_mixtral_4x.sh
+GPU=0,1 bash scripts/RESCODE/run_mixtral_4x.sh   # split the model over two GPUs (Mixtral-8x7B on 80 GB cards)
 CALIB_DATASET=c4 bash scripts/RESCODE/run_mixtral_4x.sh   # calibrate on C4 instead of DCLM (default)
 LOAD=auto bash scripts/RESCODE/run_mixtral_4x.sh   # reuse pre-fitted residuals
 ```

@@ -396,6 +396,9 @@ def run_rescode_deepseek(
         trust_remote_code=True,
     )
     model.eval()
+    # Batches are moved with `.cuda()`; follow the device holding the embeddings
+    # (the model may span several GPUs).
+    torch.cuda.set_device(model.get_input_embeddings().weight.device)
     # Two dataloaders:
     #   - cluster_dataloader: small calib for clustering, merge, preact std calib.
     #   - dataloader: full train data for teacher signals + joint LM training.
@@ -638,7 +641,7 @@ def run_rescode_deepseek(
         print(f"[RESCODE-DeepSeek] dual splits computed: {n_dual_total} clusters across "
               f"{len(split_assignments)} layers (method={method})")
 
-    # L_rec: frozen copies of the experts that will be merged.
+    # L_rec: frozen originals of the experts that will be merged.
     original_experts = None
     if use_layer_recon:
         from rescode.merging.layer_recon import snapshot_original_experts

@@ -63,6 +63,8 @@ bash scripts/RESCODE/run_dsmoe16b_32e.sh  # DeepSeek-MoE, 64 -> 32 experts (50%)
 
 Main knobs (override via env vars; all documented inline in `run.sh`):
 - `MODEL`: HuggingFace model name
+- `GPU`: device id, or a comma-separated list (e.g. `0,1`) to split the model over several GPUs
+  (Mixtral-8x7B on 80 GB cards)
 - `NUM_EXPERTS`: nominal compressed expert (cluster) count per layer `C`
 - `SALIENCY_TOP_TAU`: singleton ratio rho in % - the top-ceil(rho*N) experts of each layer by saliency stay singletons (default `15.0`)
 - `CLUSTERING`: Idea 1 statistics (`dist` by default: saliency `a_i`, routing frequency `omega_i`, and

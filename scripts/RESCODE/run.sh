@@ -230,7 +230,8 @@ export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:T
 export NCCL_P2P_DISABLE=0
 export PYTHONPATH="$(pwd):${PYTHONPATH:-}"
 
-PORT="${PORT:-$((30000 + 10#$GPU * 100 + NUM_EXPERTS))}"
+FIRST_GPU="${GPU%%,*}"                   # GPU may list several ids (e.g. "0,1") for large models
+PORT="${PORT:-$((30000 + 10#$FIRST_GPU * 100 + NUM_EXPERTS))}"
 
 # warmup_steps = 5 % of optimizer steps
 BATCHES_PER_EPOCH=$(( (N_SENTENCES + TRAIN_BATCH - 1) / TRAIN_BATCH ))

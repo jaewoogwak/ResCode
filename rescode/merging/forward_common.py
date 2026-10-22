@@ -8,7 +8,7 @@ def add_original_cluster_output(final_hidden_states, hidden_states, member_ids,
     """Add the ORIGINAL contribution of a merged cluster, sum_{j in G cap T_k(x)} pi_j(x) E_j(x).
 
     Used for the original-layer target of L_rec (see layer_recon.py); the
-    experts in `original_experts` are frozen copies taken before merging.
+    experts in `original_experts` are the frozen originals kept before merging.
     """
     for j in member_ids:
         mask = selected_experts == j

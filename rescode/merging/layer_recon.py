@@ -6,7 +6,7 @@ y^l(x) is the SMoE-layer output of the original model and y_hat^l(x) its
 compressed counterpart. Compression only replaces the routed experts that
 belong to non-singleton clusters (router, singletons, shared experts and all
 non-expert modules are frozen and unchanged), so instead of a second copy of
-the model we keep frozen copies of just those experts and let every MoE block
+the model we keep the frozen originals of just those experts and let every MoE block
 switch between the compressed and the original experts.
 
 Two choices of the original-layer target are supported:
@@ -38,26 +38,33 @@ def _moe_block(model, layer_idx: int, backbone: str):
 
 
 def snapshot_original_experts(model, cluster_maps, backbone: str) -> Dict[int, Dict[int, nn.Module]]:
-    """Frozen copies of every expert that belongs to a non-singleton cluster.
+    """Frozen originals of every expert that belongs to a non-singleton cluster.
 
-    Must be called BEFORE merging overwrites the expert weights.
+    Must be called BEFORE merging. Merging writes each cluster's base into its
+    lowest-index member in place and only rebinds the other members' slots, so
+    only that member is copied; the other members are kept by reference.
     """
     out: Dict[int, Dict[int, nn.Module]] = {}
-    n_experts = 0
+    n_experts = n_copied = 0
     for layer_idx, cmap in cluster_maps.items():
         block = _moe_block(model, layer_idx, backbone)
         layer_out = {}
         for members in cmap.cluster_to_experts.values():
             if len(members) < 2:
                 continue
+            first = min(int(e) for e in members)
             for e in members:
-                expert = copy.deepcopy(block.experts[e])
+                expert = block.experts[e]
+                if int(e) == first:
+                    expert = copy.deepcopy(expert)
+                    n_copied += 1
                 for p in expert.parameters():
                     p.requires_grad_(False)
                 layer_out[int(e)] = expert
         out[layer_idx] = layer_out
         n_experts += len(layer_out)
-    print(f"[RESCODE][L_rec] kept frozen copies of {n_experts} merged experts for the original-layer target")
+    print(f"[RESCODE][L_rec] kept the originals of {n_experts} merged experts ({n_copied} copied) "
+          f"for the original-layer target")
     return out
 
 
@@ -116,6 +123,10 @@ class LayerReconstruction:
         ]
         self.student: Dict[int, torch.Tensor] = {}
         self.teacher: Dict[int, torch.Tensor] = {}
+        # local mode: when set, each layer term is backpropagated with this weight as soon
+        # as it is computed (it only reaches that layer's residuals), so the per-layer graphs
+        # are not held until the end of the forward pass; loss() then carries no gradient.
+        self.backward_scale = None
         self._capture_teacher = False
         self._handles = [
             block.register_forward_hook(self._make_hook(i)) for i, block in self.blocks
@@ -130,7 +141,11 @@ class LayerReconstruction:
             if not torch.is_grad_enabled():
                 return
             if self.mode == "local":
-                self.local_terms[idx] = self._local_gap(module, inputs[0].detach())
+                term = self._local_gap(module, inputs[0].detach())
+                if self.backward_scale is not None and term.requires_grad:
+                    (term * self.backward_scale).backward()
+                    term = term.detach()
+                self.local_terms[idx] = term
             else:
                 self.student[idx] = out
         return hook
@@ -183,7 +198,7 @@ class LayerReconstruction:
             self.local_terms.clear()
             if not terms:
                 return torch.zeros((), device="cuda")
-            return torch.stack(terms).mean()
+            return torch.stack([t.to(terms[0].device) for t in terms]).mean()
         terms = []
         for idx, s in self.student.items():
             t = self.teacher.get(idx)
@@ -195,7 +210,7 @@ class LayerReconstruction:
         self.teacher.clear()
         if not terms:
             return torch.zeros((), device="cuda")
-        return torch.stack(terms).mean()
+        return torch.stack([t.to(terms[0].device) for t in terms]).mean()
 
     def num_layers(self) -> int:
         return len(self.blocks)

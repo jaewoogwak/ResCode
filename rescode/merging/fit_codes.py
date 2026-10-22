@@ -979,7 +979,7 @@ def _ridge_term_for_model(model: nn.Module) -> torch.Tensor:
                 term = code_full.pow(2).mean()
             else:
                 continue
-            total = term if total is None else total + term
+            total = term if total is None else total + term.to(total.device)
             n += 1
     if total is None:
         # Need a tensor that lives on a known device with grad info.
@@ -1004,7 +1004,7 @@ def _preact_l2_for_model(model: nn.Module) -> torch.Tensor:
             t = _preact_l2_term(meta)
             if t is None:
                 continue
-            total = t if total is None else total + t
+            total = t if total is None else total + t.to(total.device)
     if total is None:
         for p in _collect_all_preact_params(model):
             return p.new_zeros(())
@@ -1218,6 +1218,9 @@ def fit_codes_joint_lm(
         handles, student_store = _register_meta_capture_hooks(model)
     else:
         handles, student_store = [], {}
+        if rec.mode == "local":
+            # L_rec is the mean of the layer terms; backprop each one as it is computed
+            rec.backward_scale = config.lambda_mse / (max(1, rec.num_layers()) * accum_steps)
     t_start = time.time()
 
     # Build teacher per-batch lists keyed (layer_idx, cluster_id). Each entry
@@ -1388,8 +1391,10 @@ def fit_codes_joint_lm(
                 if mse_count > 0 and rec is None:
                     mse_total = mse_total / mse_count
 
-                ridge_term = _ridge_term_for_model(model)
-                preact_l2 = _preact_l2_for_model(model)
+                # the terms may sit on different devices when the model spans GPUs
+                ridge_term = _ridge_term_for_model(model).to(lm_loss.device)
+                preact_l2 = _preact_l2_for_model(model).to(lm_loss.device)
+                mse_total = mse_total.to(lm_loss.device)
 
                 loss = (
                     config.lambda_lm * lm_loss
