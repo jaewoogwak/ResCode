@@ -1,19 +1,3 @@
-"""Single-pass calibration statistics for Idea 1 (paper Sec. 4.2 and App. E).
-
-For every sparse MoE layer and routed expert i, one forward pass over the
-calibration set D accumulates
-
-    a_i        = E_x[ 1(i in T_k(x)) * pi_i(x) * ||E_i(x)||_2 ]     saliency, Eq. (2)
-    omega_i    = E_x[ 1(i in T_k(x)) ]                              routing frequency (App. E)
-    dist(i, j) = 1/|D| * sum_x ||E_i(x) - E_j(x)||_2^2             output distance (Step 2)
-
-where pi_i(x) is the routing weight the layer actually applies in Eq. (1)
-(top-k renormalization only when the model itself renormalizes). Every expert
-is evaluated on every calibration token; dist is recovered from the
-accumulated Gram matrix G_ij = sum_x <E_i(x), E_j(x)> as G_ii + G_jj - 2 G_ij,
-so memory does not grow with |D|.
-"""
-
 import os
 from typing import Dict, Iterator, Optional, Tuple
 
@@ -23,15 +7,13 @@ from tqdm import tqdm
 
 
 def iter_moe_blocks(model, backbone: str) -> Iterator[Tuple[int, torch.nn.Module]]:
-    """Yield (layer_idx, moe_block) for every sparse MoE layer of the model."""
     for layer_idx, layer in enumerate(model.model.layers):
         block = layer.block_sparse_moe if backbone == "mixtral" else layer.mlp
-        if hasattr(block, "experts"):  # DeepSeek keeps dense MLPs in early layers
+        if hasattr(block, "experts"):
             yield layer_idx, block
 
 
 def route(block, flat: torch.Tensor, backbone: str, top_k: int, norm_topk_prob: bool):
-    """Top-k expert ids and routing weights pi_i(x), exactly as the layer routes."""
     if backbone == "deepseek":
         logits = F.linear(flat, block.gate.weight, None)
     else:
@@ -57,11 +39,6 @@ def collect_calib_stats(
     backbone: str,
     token_chunk: int = 2048,
 ) -> Dict[int, Dict[str, torch.Tensor]]:
-    """Accumulate saliency, routing frequency and output distances over `dataloader`.
-
-    Returns {layer_idx: {"saliency": [N], "freq": [N], "dist": [N, N],
-    "energy": [N], "tokens": int}} on CPU, where energy_i = E_x ||E_i(x)||^2.
-    """
     top_k, norm_topk_prob = routing_config(model, backbone)
     acc: Dict[int, Dict[str, torch.Tensor]] = {}
     handles = []
@@ -87,7 +64,7 @@ def collect_calib_stats(
             st["freq"] += routed.sum(0).double()
             for s in range(0, flat.shape[0], token_chunk):
                 xc = flat[s:s + token_chunk]
-                outs = torch.stack([expert(xc) for expert in module.experts]).float()  # [n, t, d]
+                outs = torch.stack([expert(xc) for expert in module.experts]).float()
                 st["sal"] += (outs.norm(dim=-1) * gate[s:s + token_chunk].T).sum(1).double()
                 o = outs.reshape(n, -1).double()
                 st["gram"] += o @ o.T
@@ -125,7 +102,6 @@ def collect_calib_stats(
 
 
 def load_or_collect_calib_stats(model, dataloader, backbone: str, cache_path: Optional[str] = None):
-    """Reuse cached statistics when `cache_path` exists, otherwise collect and cache them."""
     if cache_path and os.path.isfile(cache_path):
         print(f"[RESCODE] loading calibration statistics from {cache_path}")
         return torch.load(cache_path)
@@ -134,6 +110,6 @@ def load_or_collect_calib_stats(model, dataloader, backbone: str, cache_path: Op
         os.makedirs(os.path.dirname(cache_path) or ".", exist_ok=True)
         tmp = f"{cache_path}.tmp{os.getpid()}"
         torch.save(stats, tmp)
-        os.replace(tmp, cache_path)  # atomic: concurrent runs never see a partial file
+        os.replace(tmp, cache_path)
         print(f"[RESCODE] saved calibration statistics to {cache_path}")
     return stats

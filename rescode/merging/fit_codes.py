@@ -1175,10 +1175,6 @@ def fit_codes_joint_lm(
     """Joint fitting: per-cluster MSE + LM cross-entropy on the same calibration
     data. Only code parameters are updated; everything else is frozen.
 
-    With `rec` (a layer_recon.LayerReconstruction) the reconstruction term is
-    the per-layer L_rec of Sec. 4.4 instead of the per-cluster
-    MSE, and the objective is lambda_mse * L_rec + lambda_lm * L_LM.
-
     Iterates calib_loader for `config.joint_epochs` passes. The MSE term is
     re-derived each step against the cached teacher cluster contributions
     (per-batch ordered to match calib_loader's iteration).
@@ -1219,7 +1215,6 @@ def fit_codes_joint_lm(
     else:
         handles, student_store = [], {}
         if rec.mode == "local":
-            # L_rec is the mean of the layer terms; backprop each one as it is computed
             rec.backward_scale = config.lambda_mse / (max(1, rec.num_layers()) * accum_steps)
     t_start = time.time()
 
@@ -1391,7 +1386,6 @@ def fit_codes_joint_lm(
                 if mse_count > 0 and rec is None:
                     mse_total = mse_total / mse_count
 
-                # the terms may sit on different devices when the model spans GPUs
                 ridge_term = _ridge_term_for_model(model).to(lm_loss.device)
                 preact_l2 = _preact_l2_for_model(model).to(lm_loss.device)
                 mse_total = mse_total.to(lm_loss.device)

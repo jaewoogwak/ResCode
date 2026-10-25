@@ -25,7 +25,6 @@ export GPU="${GPU:-0}"
 export TAG="${TAG:-default}"
 
 # --- 3. Idea 1 Step 1 (clustering + saliency pin) -------------------------
-export CLUSTER_BASE="${CLUSTER_BASE:-rescode}"
 export SALIENCY_TOP_TAU="${SALIENCY_TOP_TAU:-15.0}"
 
 # --- 4. Idea 1 Step 2 (saliency-weighted base construction) ---------------

@@ -67,10 +67,12 @@ Main knobs (override via env vars; all documented inline in `run.sh`):
   (Mixtral-8x7B on 80 GB cards)
 - `NUM_EXPERTS`: nominal compressed expert (cluster) count per layer `C`
 - `SALIENCY_TOP_TAU`: singleton ratio rho in % - the top-ceil(rho*N) experts of each layer by saliency stay singletons (default `15.0`)
-- `CLUSTERING`: Idea 1 statistics (`dist` by default: saliency `a_i`, routing frequency `omega_i`, and
-  `dist_out(i,j) = mean_x ||E_i(x) - E_j(x)||^2` accumulated in one pass over the whole calibration set;
-  `descriptor`: mean expert outputs on `CLUSTER_N_SENTENCES` sequences)
-- `LINKAGE`: agglomerative linkage on `dist_out` (default `average`)
+- `CLUSTERING`: expert distance used to group the non-singleton experts (`dist`:
+  `dist_out(i,j) = mean_x ||E_i(x) - E_j(x)||^2` over the whole calibration set, default for Qwen and
+  DeepSeek; `descriptor`: distance between the mean expert outputs on `CLUSTER_N_SENTENCES` sequences as in
+  HC-SMoE, default for Mixtral). Saliency `a_i` and routing frequency `omega_i` are accumulated in one pass
+  over the whole calibration set in both cases
+- `LINKAGE`: agglomerative linkage (default `average`)
 - `BUDGET_AWARE`: count the residual bases/codes toward the expert-memory budget so that
   `|Theta_hat_E| <= tau|Theta_E|` holds exactly; extra merges are spread over layers, giving layer-specific `C_l` (default `True`)
 - `RANK`: residual rank `r` (default `128`)

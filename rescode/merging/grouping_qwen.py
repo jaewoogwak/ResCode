@@ -1318,7 +1318,7 @@ class ExpertsGrouperForQwen2MoE(object):
                 batch.pop("labels")
             with torch.no_grad():
                 out = model(**batch, output_router_logits=True)
-            all_router_logits.append(torch.stack(out.router_logits).cpu())
+            all_router_logits.append(torch.stack([r.cpu() for r in out.router_logits]))
             del out
 
         for h in handles:
@@ -1815,7 +1815,6 @@ def _merge_mlp_experts_by_usage_frequency_weighting(
         group_labels: torch.LongTensor,
         usage_frequencies: torch.Tensor,
 ) -> Qwen2MoeSparseMoeBlock:
-    """Weighted average of each group's experts (accumulated in fp32), bound to its first member."""
     for label in group_labels.unique():
         expert_indices = torch.where(group_labels == label)[0]
         weights = usage_frequencies[expert_indices].float()

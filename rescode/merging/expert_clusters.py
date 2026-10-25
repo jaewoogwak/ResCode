@@ -1,22 +1,3 @@
-"""Idea 1 cluster formation from calibration statistics (paper Sec. 4.2, Alg. 1).
-
-Step 1  the top-ceil(rho * N) experts of each layer by saliency a_i are kept as
-        singleton clusters.
-Step 2  the remaining experts are grouped by agglomerative clustering on the
-        output distance dist_out(i, j), repeatedly merging the two closest
-        clusters until the target number of clusters is reached.
-
-Budget  Problem 1 requires |Theta_hat_E| <= tau * |Theta_E|, and the residual
-        bases A_G, B_G and codes z_i of every non-singleton cluster count
-        toward Theta_hat_E. When the nominal per-layer cluster count leaves the
-        model over budget once those residual parameters are counted, extra
-        merges are taken one at a time, spread over layers (one extra merge per
-        layer per round), each in the layer whose next merge has the smallest
-        output distance relative to the layer's median expert distance. This
-        gives layer-specific cluster counts C_l (Property 2) and keeps the
-        expert memory within the reported compression ratio.
-"""
-
 import math
 from typing import Dict, List, Sequence, Tuple
 
@@ -24,12 +5,6 @@ import torch
 
 
 def agglomerative_merges(dist: torch.Tensor, linkage: str = "average") -> List[Tuple[int, int, float]]:
-    """Full merge sequence of agglomerative clustering on a dissimilarity matrix.
-
-    Returns (keep, absorbed, height) triples, where `keep` and `absorbed` are
-    cluster representatives (row indices of `dist`) and `height` is the linkage
-    dissimilarity at which they were merged.
-    """
     if linkage not in ("average", "complete", "single", "ward"):
         raise ValueError(f"[RESCODE] unsupported linkage={linkage}")
     d = dist.double().clone()
@@ -54,7 +29,7 @@ def agglomerative_merges(dist: torch.Tensor, linkage: str = "average") -> List[T
                 v = torch.maximum(d[a, k], d[b, k])
             elif linkage == "single":
                 v = torch.minimum(d[a, k], d[b, k])
-            else:  # ward (Lance-Williams update on squared distances)
+            else:
                 nk = size[k]
                 v = ((nk + size[a]) * d[a, k] + (nk + size[b]) * d[b, k] - nk * h) / (nk + size[a] + size[b])
             d[a, k] = v
@@ -104,7 +79,6 @@ class _LayerPlan:
 
 
 def expert_memory(groups: List[List[int]], expert_params: int, residual_params_fn) -> int:
-    """Parameters of one compressed layer: one expert per cluster + residuals of non-singletons."""
     return sum(expert_params + (residual_params_fn(len(g)) if len(g) > 1 else 0) for g in groups)
 
 
@@ -117,17 +91,6 @@ def form_clusters(
     linkage: str = "average",
     budget_aware: bool = True,
 ) -> Tuple[Dict[int, List[List[int]]], Dict[str, float]]:
-    """Cluster every layer from `stats` (see calib_stats.collect_calib_stats).
-
-    Args:
-      num_groups:        nominal clusters per layer C (e.g. 30 of 60 at 50%).
-      singleton_ratio:   rho in [0, 1); ceil(rho * N) experts per layer are pinned.
-      expert_params:     parameters of one original expert.
-      residual_params_fn: |G| -> residual parameters of a non-singleton cluster.
-      budget_aware:      enforce sum_l memory_l <= L * C * expert_params.
-
-    Returns ({layer_idx: list of member lists}, summary dict).
-    """
     plans = []
     for layer_idx in sorted(stats):
         st = stats[layer_idx]
@@ -143,7 +106,6 @@ def form_clusters(
         sub = st["dist"][rest][:, rest]
         merges = agglomerative_merges(sub, linkage=linkage) if len(rest) > 1 else []
         num_merges = max(0, len(rest) - target_rest)
-        # typical expert dissimilarity of the layer, so merge costs compare across layers
         off_diag = sub[~torch.eye(len(rest), dtype=torch.bool)] if len(rest) > 1 else sub.flatten()
         scale = float(off_diag.median()) if off_diag.numel() else 1.0
         plans.append(_LayerPlan(layer_idx, pinned, rest, merges, num_merges, scale))
@@ -159,7 +121,6 @@ def form_clusters(
             candidates = [p for p in plans if p.can_merge()]
             if not candidates:
                 raise RuntimeError("[RESCODE] cannot meet the expert-memory budget")
-            # spread extra merges over layers (fewest extra merges first), cheapest merge within a round
             best = min(candidates, key=lambda p: (p.extra, p.next_cost(), p.layer_idx))
             best.extra += 1
             best.num_merges += 1
@@ -192,7 +153,6 @@ def form_clusters(
 
 
 def residual_params_fn_for(hidden_size: int, intermediate_size: int, rank: int, num_targets: int):
-    """Residual parameters A_G, B_G (r x (d_in + d_out)) and codes z_i (|G| x r) per restored branch."""
     return lambda g: num_targets * (rank * (hidden_size + intermediate_size) + g * rank)
 
 

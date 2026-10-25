@@ -1913,7 +1913,6 @@ def _merge_mlp_experts_by_usage_frequency_weighting(
         group_labels: torch.LongTensor,
         usage_frequencies: torch.Tensor,
 ) -> Qwen2MoeSparseMoeBlock:
-    """Weighted average of each group's experts (accumulated in fp32), bound to its first member."""
     for label in group_labels.unique():
         expert_indices = torch.where(group_labels == label)[0]
         weights = usage_frequencies[expert_indices].float()

@@ -80,24 +80,18 @@ MAX_TOKENS_PER_CLUSTER="${MAX_TOKENS_PER_CLUSTER:-32768}"
 # ---------------------------------------------------------------------------
 # 3. Clustering - Idea 1 Step 1 (saliency-aware cluster formation)
 # ---------------------------------------------------------------------------
-CLUSTERING="${CLUSTERING:-dist}"                 # dist       = saliency a_i, routing frequency omega_i and
-                                                  #              dist_out(i,j) = mean_x ||E_i(x)-E_j(x)||^2
-                                                  #              accumulated over the calibration set D
-                                                  # descriptor = mean-output descriptors on CLUSTER_N_SENTENCES
+CLUSTERING="${CLUSTERING:-dist}"                 # dist       = dist_out(i,j) = mean_x ||E_i(x)-E_j(x)||^2 over D
+                                                  # descriptor = distance between mean expert outputs on
+                                                  #              CLUSTER_N_SENTENCES sequences (HC-SMoE)
 CALIB_STATS_CACHE="${CALIB_STATS_CACHE:-}"        # cache file for the statistics (auto when empty)
-LINKAGE="${LINKAGE:-average}"                     # agglomerative linkage on dist_out
+LINKAGE="${LINKAGE:-average}"                     # agglomerative linkage
 BUDGET_AWARE="${BUDGET_AWARE:-True}"              # count residual bases/codes toward the expert-memory
                                                   # budget |Theta_hat_E| <= tau|Theta_E| (extra merges spread over layers)
-CLUSTER_BASE="${CLUSTER_BASE:-rescode}"           # rescode | expert-output
-                                                  #   rescode = output-similarity + singleton pin (Step 1)
-                                                  #   expert-output = output-similarity only (no saliency pin)
 SALIENCY_TOP_TAU="${SALIENCY_TOP_TAU:-15.0}"     # singleton ratio rho, in %: the top-ceil(rho*N) experts per
                                                   # layer by saliency stay singletons (paper: rho = 0.15)
-EXCL_MODE="${EXCL_MODE:-per-layer}"
-DESCRIPTOR_TOKENS="${DESCRIPTOR_TOKENS:-all}"    # descriptor token set for output-similarity clustering
-                                                  #   all    = every expert evaluated on the SAME
-                                                  #            calibration tokens (paper, default)
-                                                  #   routed = mean over tokens routed to each expert
+DESCRIPTOR_TOKENS="${DESCRIPTOR_TOKENS:-all}"    # tokens averaged by CLUSTERING=descriptor
+                                                  #   all    = every calibration token (default)
+                                                  #   routed = tokens routed to each expert
 
 # ---------------------------------------------------------------------------
 # 4. Base construction - Idea 1 Step 2 (saliency-weighted base)
@@ -277,9 +271,7 @@ echo "[RESCODE] ============================================================"
   --max_fit_tokens_per_layer="$MAX_TOKENS_PER_LAYER" \
   --max_fit_tokens_per_cluster="$MAX_TOKENS_PER_CLUSTER" \
   --num_average_groups="$NUM_EXPERTS" \
-  --similarity_base="$CLUSTER_BASE" \
   --exclude_top_percent="$SALIENCY_TOP_TAU" \
-  --excl_mode="$EXCL_MODE" \
   --cluster=hierarchical \
   --linkage="$LINKAGE" \
   --clustering="$CLUSTERING" \

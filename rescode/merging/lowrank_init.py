@@ -20,12 +20,8 @@ zero-B init:
        re-projected onto the finalized (B,A) using the same (1/alpha) scaling.
        Per-expert SVD components are temporary and discarded.
 
-Per-expert residuals are D_i = W_i - W_bar. With `base_weight_dict` (the
-default pipeline) W_bar is the saliency-weighted cluster base
-S_G = sum_i alpha_i W_i, alpha_i = (a_i + delta) / sum_j (a_j + delta) of paper Eq. (3), i.e. the
-base the compressed model actually uses, and the covariances are weighted by
-the routing frequencies omega_i (paper App. E). Without it, W_bar is the
-omega-weighted mean (`freq` merging).
+Per-expert residuals are D_i = W_i - W_bar where W_bar is the cluster base
+(`base_weight_dict`) or the freq-weighted cluster mean.
 
 Works on gate/up/down token-adaptive lowrank residuals. Gate/up use the
 `method` selected by the caller ("covariance" | "expert_svd_align"); the down
@@ -302,10 +298,6 @@ def compute_lowrank_preact_init_data(
     """Walk the model layer-by-layer, capture per-expert weight residuals, and
     compute (B, A, Z) for each non-singleton cluster.
 
-    `freq_dict` holds the covariance weights omega_i; `base_weight_dict` (optional)
-    holds the merge weights of the cluster base, so residuals are taken with
-    respect to the same base the merged model uses.
-
     MUST be called BEFORE RESCODE merging overwrites expert weights.
 
     `init_gate_up` computes gate/up triples with `method`; `init_down` computes
@@ -429,14 +421,13 @@ def compute_lowrank_preact_init_data(
                     w_dev = torch.ones_like(w_dev)
                 w_norm = w_dev / (w_dev.sum() + 1e-12)
                 if base_full is not None:
-                    # same normalization as the merge (grouping_*._merge_mlp_experts_by_usage_frequency_weighting)
                     b = base_full[torch.as_tensor(member_ids, dtype=torch.long)].float()
                     w_norm = (b / (b.sum() + 1e-7)).to(w_dev.device)
                 cluster_entry = {}
                 if target_gate:
                     W_bar_g = sum(w_norm[i] * gate_Ws[i].to(torch.float32)
                                   for i in range(len(member_ids)))
-                    if base_full is not None:  # the merged base is stored in the weight dtype
+                    if base_full is not None:
                         W_bar_g = W_bar_g.to(gate_Ws[0].dtype).to(torch.float32)
                     D_g = [gate_Ws[i].to(torch.float32) - W_bar_g for i in range(len(member_ids))]
                     B, A, Z = method_fn(D_g, w_dev, rank, alpha)
@@ -445,7 +436,7 @@ def compute_lowrank_preact_init_data(
                 if target_up:
                     W_bar_u = sum(w_norm[i] * up_Ws[i].to(torch.float32)
                                   for i in range(len(member_ids)))
-                    if base_full is not None:  # the merged base is stored in the weight dtype
+                    if base_full is not None:
                         W_bar_u = W_bar_u.to(up_Ws[0].dtype).to(torch.float32)
                     D_u = [up_Ws[i].to(torch.float32) - W_bar_u for i in range(len(member_ids))]
                     B, A, Z = method_fn(D_u, w_dev, rank, alpha)
@@ -454,7 +445,7 @@ def compute_lowrank_preact_init_data(
                 if target_down:
                     W_bar_d = sum(w_norm[i] * down_Ws[i].to(torch.float32)
                                   for i in range(len(member_ids)))
-                    if base_full is not None:  # the merged base is stored in the weight dtype
+                    if base_full is not None:
                         W_bar_d = W_bar_d.to(down_Ws[0].dtype).to(torch.float32)
                     D_d = [down_Ws[i].to(torch.float32) - W_bar_d for i in range(len(member_ids))]
                     B, A, Z = compute_covariance_init(D_d, w_dev, int(down_rank), float(down_alpha))

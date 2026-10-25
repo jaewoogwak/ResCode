@@ -12,9 +12,6 @@
 #   - n_routed_experts=64, top_k=6, hidden=2048, moe_intermediate=1408
 #   - n_shared_experts=2 (kept as-is; not merged)
 #
-# Stock modeling does NOT accept `output_router_logits=True`. Prefer
-# CLUSTER_BASE=rescode (the default) or expert-output.
-#
 # Idea 1: rho = 0.15 singleton pin, saliency-weighted base.
 # Idea 2: r = 128, alpha = 2.0, covariance init, gate/up/down.
 # Idea 3: L_rec + lambda L_LM with lambda = 1 (REC_MODE=local), 3 epochs,
@@ -34,7 +31,6 @@ export GPU="${GPU:-0}"
 export TAG="${TAG:-default}"
 
 # --- 3. Idea 1 Step 1 (saliency-aware cluster formation) ------------------
-export CLUSTER_BASE="${CLUSTER_BASE:-rescode}"
 export SALIENCY_TOP_TAU="${SALIENCY_TOP_TAU:-15.0}"
 
 # --- 4. Idea 1 Step 2 (saliency-weighted base construction) ---------------

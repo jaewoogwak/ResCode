@@ -7,13 +7,15 @@
 # (Section 5.7); saliency-weighted base construction (Idea-1 Step-2) stays on.
 # Paper reference at this setting: Table 3, avg = 0.6096.
 #
-# Idea 1: rho=0, saliency-weighted base.
+# Idea 1: rho=0; experts are grouped by the distance between their mean outputs
+#         (CLUSTERING=descriptor, as in HC-SMoE; CLUSTERING=dist uses dist_out);
+#         saliency-weighted base.
 # Idea 2: r=128, alpha=1.0, covariance init, target=gate_up_down.
 # Idea 3: output-guided fitting, 3 epochs, 8 sequences per optimizer step.
-#         LM term only by default (LAMBDA_MSE=0): L_rec keeps frozen
-#         copies of the merged experts on the GPU (~+55 GB for Mixtral), which does
-#         not fit next to the model on smaller GPUs. Set LAMBDA_MSE=1 LAMBDA_LM=<lambda>
-#         to use the full objective L_rec + lambda L_LM when memory allows.
+#         LM term only by default (LAMBDA_MSE=0): L_rec keeps the original
+#         merged experts on the GPU next to the model. Set LAMBDA_MSE=1
+#         LAMBDA_LM=<lambda> to use the full objective L_rec + lambda L_LM when
+#         memory allows.
 # ============================================================================
 
 set -e
@@ -30,7 +32,7 @@ if [ -z "${TAG:-}" ]; then
 fi
 
 # --- 3. Idea 1 Step 1 (clustering - pin disabled at aggressive ratio) -----
-export CLUSTER_BASE="${CLUSTER_BASE:-rescode}"
+export CLUSTERING="${CLUSTERING:-descriptor}"
 export SALIENCY_TOP_TAU="${SALIENCY_TOP_TAU:-0}"
 
 # --- 4. Idea 1 Step 2 (saliency-weighted base construction) ---------------

@@ -1,5 +1,3 @@
-"""Idea 1 / Idea 3 helpers shared by the rescode_* entry points."""
-
 import os
 from typing import Dict, Optional
 
@@ -15,6 +13,16 @@ def ffn_name(layer_idx: int, backbone: str) -> str:
     return f"model.layers.{layer_idx}.{'block_sparse_moe' if backbone == 'mixtral' else 'mlp'}"
 
 
+def descriptor_distances(model, grouper, dataloader, backbone: str) -> Dict[int, torch.Tensor]:
+    grouper.compute_saliency_and_descriptors(model, dataloader)
+    descriptors = grouper.descriptor_state_dict()
+    out = {}
+    for layer_idx, _ in iter_moe_blocks(model, backbone):
+        o = descriptors[ffn_name(layer_idx, backbone)].double().cpu()
+        out[layer_idx] = torch.cdist(o, o)
+    return out
+
+
 def cluster_from_stats(
     model,
     grouper,
@@ -27,14 +35,11 @@ def cluster_from_stats(
     linkage: str = "average",
     budget_aware: bool = True,
     cache_path: Optional[str] = None,
+    distances: Optional[Dict[int, torch.Tensor]] = None,
 ) -> Dict[str, float]:
-    """Idea 1 from one pass over the calibration set (paper Sec. 4.2).
-
-    Fills the grouper's group labels, saliency a_i and routing frequency omega_i,
-    which the saliency-weighted merge and the residual init read, and returns
-    the expert-memory budget summary.
-    """
     stats = load_or_collect_calib_stats(model, dataloader, backbone, cache_path=cache_path)
+    if distances is not None:
+        stats = {layer_idx: dict(s, dist=distances[layer_idx]) for layer_idx, s in stats.items()}
     _, block = next(iter_moe_blocks(model, backbone))
     d_ff, d_model = _get_proj_weights(block.experts[0], backbone)[0].shape
     n_targets = len(parse_lowrank_target(lowrank_target)) if lowrank_target else 0
@@ -55,19 +60,11 @@ def cluster_from_stats(
     return summary
 
 
-def residual_init_weights(grouper, clustering: str, hc_merge: str, delta: float):
-    """(freq_dict, base_weight_dict) for compute_lowrank_preact_init_data.
-
-    Covariances are weighted by the routing frequencies omega_i (App. E) and
-    residuals are taken w.r.t. the saliency-weighted base S_G of Eq. (3).
-    """
-    if clustering == "dist":
-        freq = grouper.usage_frequency_state_dict()
-        base = None
-        if hc_merge == "saliency":
-            base = {k: v + float(delta) for k, v in grouper.saliency_state_dict().items()}
-        return freq, base
-    return (grouper.usage_frequency_state_dict() if hc_merge == "freq" else None), None
+def residual_init_weights(grouper, hc_merge: str, delta: float):
+    base = None
+    if hc_merge == "saliency":
+        base = {k: v + float(delta) for k, v in grouper.saliency_state_dict().items()}
+    return grouper.usage_frequency_state_dict(), base
 
 
 def write_budget_line(result_path: Optional[str], summary: Optional[Dict[str, float]], minutes: float):

@@ -1,26 +1,3 @@
-"""Output reconstruction loss L_rec of Idea 3 (paper Sec. 4.4, Alg. 1 lines 14-16).
-
-    L_rec = 1 / (|D| L) * sum_x sum_l || y_hat^l(x) - y^l(x) ||_2^2
-
-y^l(x) is the SMoE-layer output of the original model and y_hat^l(x) its
-compressed counterpart. Compression only replaces the routed experts that
-belong to non-singleton clusters (router, singletons, shared experts and all
-non-expert modules are frozen and unchanged), so instead of a second copy of
-the model we keep the frozen originals of just those experts and let every MoE block
-switch between the compressed and the original experts.
-
-Two choices of the original-layer target are supported:
-
-  trajectory  y^l(x) is the layer output of the original model on its own
-              forward pass (teacher outputs of the original model, Alg. 1).
-  local       y^l(x) is the original layer evaluated on the compressed
-              model's layer input x, so that y_hat - y = sum_i pi_i (E_hat_i - E_i)
-              holds exactly (Sec. 4.4). The term is layer-local: it is evaluated
-              on x.detach() and only trains that layer's residuals (letting it
-              flow into earlier layers through x without the matching
-              dependence of y^l on x gives a biased gradient that diverges).
-"""
-
 import copy
 from contextlib import contextmanager
 from typing import Dict, List, Tuple
@@ -38,12 +15,6 @@ def _moe_block(model, layer_idx: int, backbone: str):
 
 
 def snapshot_original_experts(model, cluster_maps, backbone: str) -> Dict[int, Dict[int, nn.Module]]:
-    """Frozen originals of every expert that belongs to a non-singleton cluster.
-
-    Must be called BEFORE merging. Merging writes each cluster's base into its
-    lowest-index member in place and only rebinds the other members' slots, so
-    only that member is copied; the other members are kept by reference.
-    """
     out: Dict[int, Dict[int, nn.Module]] = {}
     n_experts = n_copied = 0
     for layer_idx, cmap in cluster_maps.items():
@@ -92,7 +63,6 @@ def _rescode_blocks(model) -> List[nn.Module]:
 
 @contextmanager
 def original_experts(model):
-    """Run the model with the original experts in place of the compressed clusters."""
     blocks = _rescode_blocks(model)
     for b in blocks:
         b._rescode["teacher_active"] = True
@@ -108,8 +78,6 @@ def _block_output(output):
 
 
 class LayerReconstruction:
-    """Collects y_hat^l (student) and y^l (original) for every MoE layer of a batch."""
-
     def __init__(self, model, mode: str = "trajectory", backbone: str = "qwen"):
         if mode not in ("trajectory", "local"):
             raise ValueError(f"[RESCODE] unknown rec_mode={mode}")
@@ -123,9 +91,6 @@ class LayerReconstruction:
         ]
         self.student: Dict[int, torch.Tensor] = {}
         self.teacher: Dict[int, torch.Tensor] = {}
-        # local mode: when set, each layer term is backpropagated with this weight as soon
-        # as it is computed (it only reaches that layer's residuals), so the per-layer graphs
-        # are not held until the end of the forward pass; loss() then carries no gradient.
         self.backward_scale = None
         self._capture_teacher = False
         self._handles = [
@@ -151,11 +116,6 @@ class LayerReconstruction:
         return hook
 
     def _local_gap(self, module, hidden: torch.Tensor) -> torch.Tensor:
-        """mean_x || sum_G sum_{i in G cap T_k(x)} pi_i(x) (E_hat_i(x) - E_i(x)) ||^2 on a detached input.
-
-        Singletons, shared experts and the router are identical in both models
-        and cancel; only the merged clusters are re-evaluated.
-        """
         star = module._rescode
         flat = hidden.reshape(-1, hidden.shape[-1])
         with torch.no_grad():
@@ -192,7 +152,6 @@ class LayerReconstruction:
             self._capture_teacher = False
 
     def loss(self) -> torch.Tensor:
-        """Mean over layers and tokens of ||y_hat^l - y^l||_2^2."""
         if self.mode == "local":
             terms = list(self.local_terms.values())
             self.local_terms.clear()

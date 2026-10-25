@@ -392,8 +392,6 @@ def run_rescode_qwen3(
         model_name, torch_dtype=torch.bfloat16, device_map="auto"
     )
     model.eval()
-    # Batches are moved with `.cuda()`; follow the device holding the embeddings
-    # (the model may span several GPUs).
     torch.cuda.set_device(model.get_input_embeddings().weight.device)
     # Two dataloaders:
     #   - cluster_dataloader: small calib for clustering, merge, preact std calib.

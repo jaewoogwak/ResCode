@@ -247,17 +247,12 @@ def run_rescode_qwen(
     num_fewshot: int = 0,
     seed: int = 0,
     calib_seed: int = 42,   # calibration-sampling seed (varied jointly with `seed` for multi-seed runs)
-    # Idea 1 statistics: "dist" = saliency a_i, routing frequency and the output
-    # distance dist_out(i, j) over the calibration set (Sec. 4.2); "descriptor" =
-    # clustering of mean expert outputs on `cluster_n_sentences` sequences.
     clustering: str = "dist",
     calib_stats_cache: Optional[str] = None,
-    budget_aware: bool = True,       # count residual params toward the expert-memory budget
-    # Target of L_rec (rescode/merging/layer_recon.py): "local" | "trajectory",
-    # or "cluster" for the per-cluster MSE against an online teacher.
+    budget_aware: bool = True,
     rec_mode: str = "local",
-    save_model: bool = False,        # also dump the full model state_dict (large)
-    eval_limit: int = 0,             # >0: only the first N examples of each task (quick checks)
+    save_model: bool = False,
+    eval_limit: int = 0,
 ):
     print(
         "[RESCODE-Qwen] model=", model_name,
@@ -390,8 +385,6 @@ def run_rescode_qwen(
         model_name, torch_dtype=torch.bfloat16, device_map="auto"
     )
     model.eval()
-    # Batches are moved with `.cuda()`; follow the device holding the embeddings
-    # (the model may span several GPUs).
     torch.cuda.set_device(model.get_input_embeddings().weight.device)
     # Two dataloaders:
     #   - cluster_dataloader: small calib for clustering, merge, preact std calib.
@@ -423,38 +416,29 @@ def run_rescode_qwen(
     )
 
     t_compress = time.time()
-    budget_summary = None
     t0 = time.time()
     from rescode.merging import clustering as _clustering
     _clustering.clear_merge_seq_log()
-    if clustering == "dist":
-        # 1) Idea 1 from one pass over the full calibration set D: saliency a_i
-        #    (Eq. 2), routing frequency omega_i and dist_out(i, j) (Step 2).
-        from rescode.merging.pipeline import cluster_from_stats
-        print(f"[RESCODE-Qwen] computing calibration statistics on D (n={n_sentences})...")
-        budget_summary = cluster_from_stats(
-            model, grouper, dataloader, "qwen",
-            num_groups=num_average_groups,
-            singleton_ratio=float(exclude_top_percent) / 100.0,
-            rank=preact_lowrank_rank,
-            lowrank_target=preact_lowrank_target if preact_star else None,
-            linkage=linkage,
-            budget_aware=budget_aware,
-            cache_path=calib_stats_cache,
-        )
-        dom_experts = None
-    else:
-        # 1) Descriptor clustering on `cluster_n_sentences` sequences.
-        print(f"[RESCODE-Qwen] computing RESCODE clusters (calib n={cluster_n_sentences})...")
-        # excl-topk needs usage_frequency populated even if hc_merge != "freq"
-        needs_freq = (hc_merge == "freq") or (similarity_base == "expert-output-excl-topk")
-        if needs_freq:
-            grouper.compute_all_usages(model, cluster_dataloader)
-        dom_experts = grouper.cluster_experts(
-            model=model, dataloader=cluster_dataloader, num_groups=num_average_groups,
-            exclude_top_percent=float(exclude_top_percent),
-            excl_mode=str(excl_mode),
-        )
+    if clustering not in ("dist", "descriptor"):
+        raise ValueError(f"[RESCODE] unknown clustering={clustering}")
+    from rescode.merging.pipeline import cluster_from_stats, descriptor_distances
+    distances = None
+    if clustering == "descriptor":
+        print(f"[RESCODE-Qwen] computing mean-output descriptors (calib n={cluster_n_sentences})...")
+        distances = descriptor_distances(model, grouper, cluster_dataloader, "qwen")
+    print(f"[RESCODE-Qwen] computing calibration statistics on D (n={n_sentences})...")
+    budget_summary = cluster_from_stats(
+        model, grouper, dataloader, "qwen",
+        num_groups=num_average_groups,
+        singleton_ratio=float(exclude_top_percent) / 100.0,
+        rank=preact_lowrank_rank,
+        lowrank_target=preact_lowrank_target if preact_star else None,
+        linkage=linkage,
+        budget_aware=budget_aware,
+        cache_path=calib_stats_cache,
+        distances=distances,
+    )
+    dom_experts = None
     # Capture per-layer hierarchical merge sequences (used by split method A).
     _merge_seq_log = _clustering.get_merge_seq_log()
     print(f"[RESCODE-Qwen] clustering took {time.time() - t0:.1f}s")
@@ -632,7 +616,6 @@ def run_rescode_qwen(
         print(f"[RESCODE-Qwen] dual splits computed: {n_dual_total} clusters across "
               f"{len(split_assignments)} layers (method={method})")
 
-    # L_rec: frozen originals of the experts that will be merged.
     original_experts = None
     if use_layer_recon:
         from rescode.merging.layer_recon import snapshot_original_experts
@@ -655,9 +638,7 @@ def run_rescode_qwen(
     if wants_gate_up_init or wants_down_init:
         from rescode.merging import compute_lowrank_preact_init_data
         from rescode.merging.pipeline import residual_init_weights
-        # omega_i: routing frequencies (paper App. E); residuals are taken with
-        # respect to the saliency-weighted base S_G the merged model uses.
-        init_freq, init_base = residual_init_weights(grouper, clustering, hc_merge, rescode_delta)
+        init_freq, init_base = residual_init_weights(grouper, hc_merge, rescode_delta)
         print(f"[RESCODE-Qwen] computing lowrank_preact init "
               f"(method={preact_cfg.lowrank_init}, target={preact_cfg.lowrank_target}, "
               f"rank={preact_cfg.lowrank_rank}, alpha={preact_cfg.lowrank_alpha}, "
