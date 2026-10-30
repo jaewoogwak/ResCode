@@ -40,15 +40,16 @@ exact-residual probe had MoE-output relative error about `1.5e-4`.
 
 ## Environment and calibration data
 
-On the current server, the environment is `/venv/rescode` (there is no `conda`
-executable). The installed `peft==0.10.0` matches its `accelerate==0.28.0`;
-the image originally had an incompatible newer PEFT. Run from the repo root:
+On a fresh Linux x86_64 GPU instance, run `setup.sh` from the repo root. It
+recreates the current server's Python and package versions, including
+`peft==0.10.0` with `accelerate==0.28.0`. The current server uses
+`/venv/rescode`; new clones use `.venv` by default. Then prepare calibration
+data separately:
 
 ```bash
-cd /home/jaewoo/ResCode
-source /venv/rescode/bin/activate
+bash setup.sh
+source .venv/bin/activate
 export PYTHONPATH=$PWD TOKENIZERS_PARALLELISM=false
-python -m pip install --no-deps peft==0.10.0
 python scripts/RESCODE/prepare_calib_datasets.py --dataset wikipedia --n_docs 40000 --overwrite
 python -m unittest discover -s tests -p test_direct_qjl.py -v
 ```

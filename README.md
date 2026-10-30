@@ -23,10 +23,16 @@ We tested the code with the following environment.
 - HuggingFace Transformers 4.40
 - NVIDIA GPU (we used a single B200 180GB GPU)
 
-Install required packages:
+On a fresh Linux x86_64 NVIDIA GPU instance, create the pinned ResCode environment:
 ```bash
-pip install -r requirements.txt
+bash setup.sh
+source .venv/bin/activate
 ```
+
+`setup.sh` recreates Python 3.10.22 and the CUDA 12.8 PyTorch environment
+recorded in [`requirements-rescode.lock`](requirements-rescode.lock). Set
+`RESCODE_ENV_DIR` before running it to use another environment directory.
+Models and calibration datasets are downloaded separately below.
 
 ## Setup
 

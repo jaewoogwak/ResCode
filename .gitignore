@@ -162,6 +162,7 @@ tags
 
 # .lock
 *.lock
+!requirements-rescode.lock
 
 # DS_Store (MacOS)
 .DS_Store
