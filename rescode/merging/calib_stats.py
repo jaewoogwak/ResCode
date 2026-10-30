@@ -6,6 +6,22 @@ import torch.nn.functional as F
 from tqdm import tqdm
 
 
+# A full FP64 matmul over all tokens dominates calibration on consumer GPUs.
+# Keep the accumulator in FP64, but multiply small FP32 blocks so the reduction
+# error stays small without materializing a multi-GiB FP64 expert-output tensor.
+_GRAM_FEATURE_CHUNK = 16384
+
+
+def accumulate_output_gram(gram: torch.Tensor, outputs: torch.Tensor) -> None:
+    flattened = outputs.float().reshape(outputs.shape[0], -1)
+    if flattened.device.type != "cuda":
+        gram.add_(flattened.double() @ flattened.double().T)
+        return
+    for start in range(0, flattened.shape[1], _GRAM_FEATURE_CHUNK):
+        block = flattened[:, start:start + _GRAM_FEATURE_CHUNK]
+        gram.add_((block @ block.T).double())
+
+
 def iter_moe_blocks(model, backbone: str) -> Iterator[Tuple[int, torch.nn.Module]]:
     for layer_idx, layer in enumerate(model.model.layers):
         block = layer.block_sparse_moe if backbone == "mixtral" else layer.mlp
@@ -42,6 +58,7 @@ def collect_calib_stats(
     top_k, norm_topk_prob = routing_config(model, backbone)
     acc: Dict[int, Dict[str, torch.Tensor]] = {}
     handles = []
+    prior_tf32 = torch.backends.cuda.matmul.allow_tf32
 
     def make_hook(layer_idx):
         def hook(module, inputs, _output):
@@ -66,20 +83,22 @@ def collect_calib_stats(
                 xc = flat[s:s + token_chunk]
                 outs = torch.stack([expert(xc) for expert in module.experts]).float()
                 st["sal"] += (outs.norm(dim=-1) * gate[s:s + token_chunk].T).sum(1).double()
-                o = outs.reshape(n, -1).double()
-                st["gram"] += o @ o.T
-                del outs, o
+                accumulate_output_gram(st["gram"], outs)
+                del outs
             st["tokens"] += flat.shape[0]
         return hook
 
     for layer_idx, block in iter_moe_blocks(model, backbone):
         handles.append(block.register_forward_hook(make_hook(layer_idx)))
     model.eval()
+    # TF32 truncates FP32 inputs and would significantly change the distances.
+    torch.backends.cuda.matmul.allow_tf32 = False
     try:
         for batch in tqdm(dataloader, desc="[RESCODE] calibration statistics (saliency, freq, dist_out)"):
             batch = {k: v.cuda() for k, v in batch.items() if k != "labels"}
             model(**batch)
     finally:
+        torch.backends.cuda.matmul.allow_tf32 = prior_tf32
         for h in handles:
             h.remove()
 
