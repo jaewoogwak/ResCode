@@ -59,6 +59,10 @@ def evaluate_fewshot(
         batch_size=eval_batch_size,
         device_map="auto"
     )
+    
+    if isinstance(task, str):
+        task = [t.strip() for t in task.split(",") if t.strip()]
+
     results = evaluator.simple_evaluate(
         model=lm,
         tasks=task,
