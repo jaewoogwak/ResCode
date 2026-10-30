@@ -21,7 +21,7 @@ from rescode.evaluation import evaluate_fewshot, get_calib_dataloder
 from rescode.merging.calib_stats import iter_moe_blocks, load_or_collect_calib_stats
 from rescode.merging.expert_clusters import form_clusters, residual_params_fn_for
 from rescode.merging.eval_summary import report_eval_summary
-from rescode.qjl.calibration import collect_projection_samples
+from rescode.qjl.calibration import ProjectionSampleCollector, collect_projection_samples
 from rescode.qjl.core import parse_targets
 from rescode.qjl.model import convert_model, load_qjl_checkpoint, save_qjl_checkpoint
 
@@ -122,9 +122,15 @@ def grouping(model, loader, args, shared_root):
         if saved["key"] != key:
             raise ValueError("groups-path configuration mismatch")
         print(f"[QJL] reused groups: {groups_path}", flush=True)
-        return saved["groups"], saved["saliency"], saved["summary"], groups_path
+        return saved["groups"], saved["saliency"], saved["summary"], groups_path, None
     stats_cache = args.calib_stats_cache or str(shared_root / f"calib-stats-{name}.pt")
-    stats = load_or_collect_calib_stats(model, loader, args.model, stats_cache)
+    sample_layers = None if args.layers == "all" else {int(x) for x in args.layers.split(",")}
+    sampler = ProjectionSampleCollector(
+        args.model, sample_layers, args.max_train_per_expert, args.max_heldout_per_expert
+    )
+    stats = load_or_collect_calib_stats(
+        model, loader, args.model, stats_cache, sample_hook=sampler.capture
+    )
     _, block = next(iter_moe_blocks(model, args.model))
     first = block.experts[0]
     gate = first.w1.weight if args.model == "mixtral" else first.gate_proj.weight
@@ -140,7 +146,8 @@ def grouping(model, loader, args, shared_root):
     torch.save({"key": key, "groups": groups,
                 "saliency": {k: v["saliency"] for k, v in stats.items()},
                 "summary": summary}, groups_path)
-    return groups, {k: v["saliency"] for k, v in stats.items()}, summary, groups_path
+    samples = sampler.result() if sampler.captured else None
+    return groups, {k: v["saliency"] for k, v in stats.items()}, summary, groups_path, samples
 
 
 def evaluate(model, tokenizer, args, out):
@@ -238,7 +245,9 @@ def main():
             raise FileExistsError(f"{checkpoint} already exists; pass --overwrite to replace")
         loader = calibrator(tokenizer, args)
         shared_root = Path(f"results/qjl_direct/shared/{args.model}")
-        groups, saliency, group_summary, groups_path = grouping(model, loader, args, shared_root)
+        groups, saliency, group_summary, groups_path, samples = grouping(
+            model, loader, args, shared_root
+        )
         if args.layers != "all":
             chosen = {int(x) for x in args.layers.split(",")}
             unknown = chosen - set(groups)
@@ -256,11 +265,15 @@ def main():
                         "raise --gpu-memory-fraction or use more GPU memory "
                         "before compression"
                     )
-        train, heldout, probes = collect_projection_samples(
-            model, loader, args.model, groups,
-            max_train=args.max_train_per_expert,
-            max_heldout=args.max_heldout_per_expert,
-        )
+        if samples is None:
+            train, heldout, probes = collect_projection_samples(
+                model, loader, args.model, groups,
+                max_train=args.max_train_per_expert,
+                max_heldout=args.max_heldout_per_expert,
+            )
+        else:
+            train, heldout, probes = samples
+            print("[QJL] reused projection samples from grouping calibration", flush=True)
         config = {"base_method": args.base_method, "residual_mode": args.residual_mode,
                   "qjl_d": args.qjl_d, "targets": args.targets,
                   "backend": args.backend, "projection_seed": args.projection_seed,

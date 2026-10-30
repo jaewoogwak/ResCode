@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Iterator, Optional, Tuple
+from typing import Callable, Dict, Iterator, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -54,6 +54,7 @@ def collect_calib_stats(
     dataloader,
     backbone: str,
     token_chunk: int = 2048,
+    sample_hook: Optional[Callable] = None,
 ) -> Dict[int, Dict[str, torch.Tensor]]:
     top_k, norm_topk_prob = routing_config(model, backbone)
     acc: Dict[int, Dict[str, torch.Tensor]] = {}
@@ -86,6 +87,8 @@ def collect_calib_stats(
                 accumulate_output_gram(st["gram"], outs)
                 del outs
             st["tokens"] += flat.shape[0]
+            if sample_hook is not None:
+                sample_hook(layer_idx, module, hidden, selected, weights)
         return hook
 
     for layer_idx, block in iter_moe_blocks(model, backbone):
@@ -120,11 +123,13 @@ def collect_calib_stats(
     return stats
 
 
-def load_or_collect_calib_stats(model, dataloader, backbone: str, cache_path: Optional[str] = None):
+def load_or_collect_calib_stats(model, dataloader, backbone: str,
+                                cache_path: Optional[str] = None,
+                                sample_hook: Optional[Callable] = None):
     if cache_path and os.path.isfile(cache_path):
         print(f"[RESCODE] loading calibration statistics from {cache_path}")
         return torch.load(cache_path)
-    stats = collect_calib_stats(model, dataloader, backbone)
+    stats = collect_calib_stats(model, dataloader, backbone, sample_hook=sample_hook)
     if cache_path:
         os.makedirs(os.path.dirname(cache_path) or ".", exist_ok=True)
         tmp = f"{cache_path}.tmp{os.getpid()}"
