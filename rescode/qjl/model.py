@@ -9,7 +9,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .base import fit_shared_base, variance_objective
-from .core import ExactResidual, PackedResidual, ProjectionBank, pack_residual, parse_targets
+from .core import (ExactResidual, PackedResidual, ProjectionBank, pack_residual,
+                   parse_targets, qjl_triton_fused_gate_up)
 
 
 def projections(expert: nn.Module, family: str):
@@ -36,12 +37,21 @@ class SharedBaseCluster(nn.Module):
     def forward_expert(self, expert_id: int, x: torch.Tensor,
                        hidden_z: torch.Tensor = None) -> torch.Tensor:
         residual = self.residuals[str(expert_id)]
-        gate_r = (residual["gate"].forward_projected(hidden_z, x.dtype)
-                  if hidden_z is not None and isinstance(residual["gate"], PackedResidual)
-                  else residual["gate"](x))
-        up_r = (residual["up"].forward_projected(hidden_z, x.dtype)
-                if hidden_z is not None and isinstance(residual["up"], PackedResidual)
-                else residual["up"](x))
+        gate_module, up_module = residual["gate"], residual["up"]
+        if (hidden_z is not None and isinstance(gate_module, PackedResidual)
+                and isinstance(up_module, PackedResidual)
+                and gate_module.backend == up_module.backend == "triton"
+                and gate_module.d == up_module.d
+                and gate_module.packed.shape == up_module.packed.shape):
+            gate_r, up_r = qjl_triton_fused_gate_up(hidden_z, gate_module,
+                                                    up_module, x.dtype)
+        else:
+            gate_r = (gate_module.forward_projected(hidden_z, x.dtype)
+                      if hidden_z is not None and isinstance(gate_module, PackedResidual)
+                      else gate_module(x))
+            up_r = (up_module.forward_projected(hidden_z, x.dtype)
+                    if hidden_z is not None and isinstance(up_module, PackedResidual)
+                    else up_module(x))
         gate = self.bases["gate"](x) + gate_r
         up = self.bases["up"](x) + up_r
         middle = F.silu(gate) * up

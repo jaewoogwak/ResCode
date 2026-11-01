@@ -1,5 +1,9 @@
 # Direct residual QJL experiment
 
+The optimized `triton` inference backend, `triton_legacy` comparison path,
+numerical checks, CUDA Events measurements, and reproduction commands are in
+[TRITON_BACKEND.md](TRITON_BACKEND.md).
+
 This path is independent of `scripts/RESCODE/run.sh`. It keeps the original
 router, original top-k expert IDs and weights, Qwen's shared expert, and the
 SwiGLU order. ResCode's existing calibration statistics and `form_clusters`

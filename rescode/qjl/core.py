@@ -105,11 +105,27 @@ def qjl_triton(z: torch.Tensor, packed: torch.Tensor, norms: torch.Tensor, d: in
     return packed_qjl(z.contiguous(), packed.contiguous(), norms.contiguous(), d)
 
 
+def qjl_triton_legacy(z: torch.Tensor, packed: torch.Tensor,
+                      norms: torch.Tensor, d: int) -> torch.Tensor:
+    if not z.is_cuda:
+        raise RuntimeError("Triton backend requires CUDA")
+    from .triton_kernel import packed_qjl_legacy
+    return packed_qjl_legacy(z.contiguous(), packed.contiguous(), norms.contiguous(), d)
+
+
+def qjl_triton_fused_gate_up(z: torch.Tensor, gate: "PackedResidual",
+                             up: "PackedResidual", output_dtype: torch.dtype):
+    from .triton_kernel import packed_qjl_fused_gate_up
+    gate_y, up_y = packed_qjl_fused_gate_up(
+        z.contiguous(), gate.packed, gate.norms, up.packed, up.norms, gate.d)
+    return gate_y.to(output_dtype), up_y.to(output_dtype)
+
+
 class PackedResidual(nn.Module):
     def __init__(self, packed: torch.Tensor, norms: torch.Tensor, input_dim: int,
                  d: int, bank: ProjectionBank, backend: str = "triton"):
         super().__init__()
-        if backend not in ("triton", "reference"):
+        if backend not in ("triton", "triton_legacy", "reference"):
             raise ValueError(f"unknown QJL backend: {backend}")
         self.register_buffer("packed", packed.contiguous())
         self.register_buffer("norms", norms.contiguous())
@@ -125,6 +141,8 @@ class PackedResidual(nn.Module):
                           leading_shape=None) -> torch.Tensor:
         if self.backend == "triton":
             y = qjl_triton(z, self.packed, self.norms, self.d)
+        elif self.backend == "triton_legacy":
+            y = qjl_triton_legacy(z, self.packed, self.norms, self.d)
         else:
             y = qjl_reference(z, self.packed, self.norms, self.d)
         if leading_shape is None:

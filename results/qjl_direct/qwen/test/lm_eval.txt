@@ -1,0 +1,103 @@
+|                 Tasks                  |Version|Filter|n-shot| Metric |Value |   |Stderr|
+|----------------------------------------|-------|------|-----:|--------|-----:|---|-----:|
+|rte                                     |      1|none  |     0|acc     |0.6931|±  |0.0278|
+|openbookqa                              |      1|none  |     0|acc     |0.2780|±  |0.0201|
+|                                        |       |none  |     0|acc_norm|0.3960|±  |0.0219|
+|mmlu                                    |N/A    |none  |     0|acc     |0.4591|±  |0.0040|
+|mmlu_humanities                         |N/A    |none  |     0|acc     |0.4036|±  |0.0067|
+|mmlu_formal_logic                       |      0|none  |     0|acc     |0.3175|±  |0.0416|
+|mmlu_high_school_european_history       |      0|none  |     0|acc     |0.6727|±  |0.0366|
+|mmlu_high_school_us_history             |      0|none  |     0|acc     |0.6667|±  |0.0331|
+|mmlu_high_school_world_history          |      0|none  |     0|acc     |0.7089|±  |0.0296|
+|mmlu_international_law                  |      0|none  |     0|acc     |0.6529|±  |0.0435|
+|mmlu_jurisprudence                      |      0|none  |     0|acc     |0.5093|±  |0.0483|
+|mmlu_logical_fallacies                  |      0|none  |     0|acc     |0.5521|±  |0.0391|
+|mmlu_moral_disputes                     |      0|none  |     0|acc     |0.4682|±  |0.0269|
+|mmlu_moral_scenarios                    |      0|none  |     0|acc     |0.2380|±  |0.0142|
+|mmlu_philosophy                         |      0|none  |     0|acc     |0.4662|±  |0.0283|
+|mmlu_prehistory                         |      0|none  |     0|acc     |0.5093|±  |0.0278|
+|mmlu_professional_law                   |      0|none  |     0|acc     |0.2757|±  |0.0114|
+|mmlu_world_religions                    |      0|none  |     0|acc     |0.6550|±  |0.0365|
+|mmlu_other                              |N/A    |none  |     0|acc     |0.5220|±  |0.0087|
+|mmlu_business_ethics                    |      0|none  |     0|acc     |0.5500|±  |0.0500|
+|mmlu_clinical_knowledge                 |      0|none  |     0|acc     |0.5509|±  |0.0306|
+|mmlu_college_medicine                   |      0|none  |     0|acc     |0.4682|±  |0.0380|
+|mmlu_global_facts                       |      0|none  |     0|acc     |0.2600|±  |0.0441|
+|mmlu_human_aging                        |      0|none  |     0|acc     |0.4798|±  |0.0335|
+|mmlu_management                         |      0|none  |     0|acc     |0.6796|±  |0.0462|
+|mmlu_marketing                          |      0|none  |     0|acc     |0.7308|±  |0.0291|
+|mmlu_medical_genetics                   |      0|none  |     0|acc     |0.5400|±  |0.0501|
+|mmlu_miscellaneous                      |      0|none  |     0|acc     |0.6130|±  |0.0174|
+|mmlu_nutrition                          |      0|none  |     0|acc     |0.5523|±  |0.0285|
+|mmlu_professional_accounting            |      0|none  |     0|acc     |0.3369|±  |0.0282|
+|mmlu_professional_medicine              |      0|none  |     0|acc     |0.3566|±  |0.0291|
+|mmlu_virology                           |      0|none  |     0|acc     |0.4277|±  |0.0385|
+|mmlu_social_sciences                    |N/A    |none  |     0|acc     |0.5587|±  |0.0088|
+|mmlu_econometrics                       |      0|none  |     0|acc     |0.2719|±  |0.0419|
+|mmlu_high_school_geography              |      0|none  |     0|acc     |0.5960|±  |0.0350|
+|mmlu_high_school_government_and_politics|      0|none  |     0|acc     |0.6580|±  |0.0342|
+|mmlu_high_school_macroeconomics         |      0|none  |     0|acc     |0.4513|±  |0.0252|
+|mmlu_high_school_microeconomics         |      0|none  |     0|acc     |0.4874|±  |0.0325|
+|mmlu_high_school_psychology             |      0|none  |     0|acc     |0.6697|±  |0.0202|
+|mmlu_human_sexuality                    |      0|none  |     0|acc     |0.5725|±  |0.0434|
+|mmlu_professional_psychology            |      0|none  |     0|acc     |0.4706|±  |0.0202|
+|mmlu_public_relations                   |      0|none  |     0|acc     |0.6000|±  |0.0469|
+|mmlu_security_studies                   |      0|none  |     0|acc     |0.6245|±  |0.0310|
+|mmlu_sociology                          |      0|none  |     0|acc     |0.6667|±  |0.0333|
+|mmlu_us_foreign_policy                  |      0|none  |     0|acc     |0.7000|±  |0.0461|
+|mmlu_stem                               |N/A    |none  |     0|acc     |0.3828|±  |0.0085|
+|mmlu_abstract_algebra                   |      0|none  |     0|acc     |0.2900|±  |0.0456|
+|mmlu_anatomy                            |      0|none  |     0|acc     |0.4815|±  |0.0432|
+|mmlu_astronomy                          |      0|none  |     0|acc     |0.4408|±  |0.0404|
+|mmlu_college_biology                    |      0|none  |     0|acc     |0.5278|±  |0.0417|
+|mmlu_college_chemistry                  |      0|none  |     0|acc     |0.3700|±  |0.0485|
+|mmlu_college_computer_science           |      0|none  |     0|acc     |0.3600|±  |0.0482|
+|mmlu_college_mathematics                |      0|none  |     0|acc     |0.3000|±  |0.0461|
+|mmlu_college_physics                    |      0|none  |     0|acc     |0.2255|±  |0.0416|
+|mmlu_computer_security                  |      0|none  |     0|acc     |0.5800|±  |0.0496|
+|mmlu_conceptual_physics                 |      0|none  |     0|acc     |0.3830|±  |0.0318|
+|mmlu_electrical_engineering             |      0|none  |     0|acc     |0.4345|±  |0.0413|
+|mmlu_elementary_mathematics             |      0|none  |     0|acc     |0.3333|±  |0.0243|
+|mmlu_high_school_biology                |      0|none  |     0|acc     |0.5452|±  |0.0283|
+|mmlu_high_school_chemistry              |      0|none  |     0|acc     |0.3054|±  |0.0324|
+|mmlu_high_school_computer_science       |      0|none  |     0|acc     |0.4700|±  |0.0502|
+|mmlu_high_school_mathematics            |      0|none  |     0|acc     |0.3000|±  |0.0279|
+|mmlu_high_school_physics                |      0|none  |     0|acc     |0.2450|±  |0.0351|
+|mmlu_high_school_statistics             |      0|none  |     0|acc     |0.3009|±  |0.0313|
+|mmlu_machine_learning                   |      0|none  |     0|acc     |0.4107|±  |0.0467|
+|hellaswag                               |      1|none  |     0|acc     |0.5426|±  |0.0050|
+|                                        |       |none  |     0|acc_norm|0.7333|±  |0.0044|
+|boolq                                   |      2|none  |     0|acc     |0.7015|±  |0.0080|
+|arc_easy                                |      1|none  |     0|acc     |0.6178|±  |0.0100|
+|                                        |       |none  |     0|acc_norm|0.5884|±  |0.0101|
+|arc_challenge                           |      1|none  |     0|acc     |0.3311|±  |0.0138|
+|                                        |       |none  |     0|acc_norm|0.3584|±  |0.0140|
+|winogrande                              |      1|none  |     0|acc     |0.6172|±  |0.0137|
+
+|       Groups       |Version|Filter|n-shot|Metric|Value |   |Stderr|
+|--------------------|-------|------|-----:|------|-----:|---|-----:|
+|mmlu                |N/A    |none  |     0|acc   |0.4591|±  |0.0040|
+|mmlu_humanities     |N/A    |none  |     0|acc   |0.4036|±  |0.0067|
+|mmlu_other          |N/A    |none  |     0|acc   |0.5220|±  |0.0087|
+|mmlu_social_sciences|N/A    |none  |     0|acc   |0.5587|±  |0.0088|
+|mmlu_stem           |N/A    |none  |     0|acc   |0.3828|±  |0.0085|
+
+
+========================================================================
+Direct QJL evaluation
+========================================================================
+|       Task        |  acc   | acc_norm |
+|-------------------|-------:|---------:|
+| winogrande        | 0.6172 |     -    |
+| arc_challenge     | 0.3311 | 0.3584 |
+| arc_easy          | 0.6178 | 0.5884 |
+| boolq             | 0.7015 |     -    |
+| hellaswag         | 0.5426 | 0.7333 |
+| mmlu              | 0.4591 |     -    |
+| openbookqa        | 0.2780 | 0.3960 |
+| rte               | 0.6931 |     -    |
+
+avg      = 0.5301      (mean of acc over all tasks)
+avg_norm = 0.5684      (mean of acc_norm; fallback to acc for ['winogrande', 'boolq', 'mmlu', 'rte'])
+avg_norm_strict = 0.5190  (mean of acc_norm over only tasks that report acc_norm: ['arc_challenge', 'arc_easy', 'hellaswag', 'openbookqa'])
+========================================================================

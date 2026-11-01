@@ -1,0 +1,2858 @@
+{
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+  "torch": "2.8.0+cu128",
+  "triton": "3.4.0",
+  "protocol": {
+    "warmup": 5,
+    "repeats": 20,
+    "same_checkpoint_per_family": true,
+    "cuda_events": true,
+    "synthetic_block": true
+  },
+  "families": {
+    "qwen": {
+      "checkpoint_format": "rescode-direct-qjl-v1",
+      "checkpoint_bytes": 61912555,
+      "shape": {
+        "hidden": 2048,
+        "intermediate": 1408,
+        "qjl_d": 8192,
+        "experts": 4,
+        "qjl_experts": 2,
+        "bf16_singletons": 2
+      },
+      "tokens": {
+        "1": {
+          "numerical": {
+            "reference": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            },
+            "triton_legacy": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 3.8950076941546286e-08,
+                "relative_l2": 8.100476378558596e-08,
+                "max_abs": 2.384185791015625e-07,
+                "bf16_exact_fraction": 0.4609375
+              },
+              "up_residual_fp32": {
+                "rmse": 4.040643020175594e-08,
+                "relative_l2": 8.584864730210029e-08,
+                "max_abs": 2.384185791015625e-07,
+                "bf16_exact_fraction": 0.4573863744735718
+              },
+              "down_residual_fp32": {
+                "rmse": 7.774160870610558e-09,
+                "relative_l2": 8.051146238585716e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4697265625
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 7.774160870610558e-09,
+                "relative_l2": 8.051146238585716e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4697265625
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            },
+            "triton": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 3.8950076941546286e-08,
+                "relative_l2": 8.100476378558596e-08,
+                "max_abs": 2.384185791015625e-07,
+                "bf16_exact_fraction": 0.4609375
+              },
+              "up_residual_fp32": {
+                "rmse": 4.040643020175594e-08,
+                "relative_l2": 8.584864730210029e-08,
+                "max_abs": 2.384185791015625e-07,
+                "bf16_exact_fraction": 0.4573863744735718
+              },
+              "down_residual_fp32": {
+                "rmse": 7.774160870610558e-09,
+                "relative_l2": 8.051146238585716e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4697265625
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 7.774160870610558e-09,
+                "relative_l2": 8.051146238585716e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4697265625
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            }
+          },
+          "timing": {
+            "reference": {
+              "gate": {
+                "median_ms": 0.8419359922409058,
+                "peak_extra_allocated_bytes": 9475072
+              },
+              "up": {
+                "median_ms": 0.8419359922409058,
+                "peak_extra_allocated_bytes": 9475072
+              },
+              "down": {
+                "median_ms": 1.197759985923767,
+                "peak_extra_allocated_bytes": 9477632
+              },
+              "gate_up_pair": {
+                "median_ms": 1.4819520115852356,
+                "peak_extra_allocated_bytes": 9478144
+              },
+              "expert": {
+                "median_ms": 3.016864061355591,
+                "peak_extra_allocated_bytes": 9513472
+              },
+              "moe": {
+                "median_ms": 3.6342560052871704,
+                "peak_extra_allocated_bytes": 9540096
+              }
+            },
+            "triton_legacy": {
+              "gate": {
+                "median_ms": 0.0579840000718832,
+                "peak_extra_allocated_bytes": 8704
+              },
+              "up": {
+                "median_ms": 0.05913599953055382,
+                "peak_extra_allocated_bytes": 8704
+              },
+              "down": {
+                "median_ms": 0.06353599950671196,
+                "peak_extra_allocated_bytes": 12288
+              },
+              "gate_up_pair": {
+                "median_ms": 0.1061439998447895,
+                "peak_extra_allocated_bytes": 11776
+              },
+              "expert": {
+                "median_ms": 0.3331200033426285,
+                "peak_extra_allocated_bytes": 48128
+              },
+              "moe": {
+                "median_ms": 1.1813439726829529,
+                "peak_extra_allocated_bytes": 74752
+              }
+            },
+            "triton": {
+              "gate": {
+                "median_ms": 0.057391999289393425,
+                "peak_extra_allocated_bytes": 8704
+              },
+              "up": {
+                "median_ms": 0.05663999915122986,
+                "peak_extra_allocated_bytes": 8704
+              },
+              "down": {
+                "median_ms": 0.06161599978804588,
+                "peak_extra_allocated_bytes": 12288
+              },
+              "gate_up_pair": {
+                "median_ms": 0.08502399921417236,
+                "peak_extra_allocated_bytes": 17408
+              },
+              "expert": {
+                "median_ms": 0.28199999034404755,
+                "peak_extra_allocated_bytes": 48128
+              },
+              "moe": {
+                "median_ms": 0.8673279881477356,
+                "peak_extra_allocated_bytes": 74752
+              }
+            }
+          },
+          "routing_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          },
+          "singleton_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          }
+        },
+        "4": {
+          "numerical": {
+            "reference": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            },
+            "triton_legacy": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 4.5335308840321886e-08,
+                "relative_l2": 9.305406933890481e-08,
+                "max_abs": 3.5762786865234375e-07,
+                "bf16_exact_fraction": 0.44229406118392944
+              },
+              "up_residual_fp32": {
+                "rmse": 4.4605343418879784e-08,
+                "relative_l2": 9.369425413296995e-08,
+                "max_abs": 2.384185791015625e-07,
+                "bf16_exact_fraction": 0.4451349675655365
+              },
+              "down_residual_fp32": {
+                "rmse": 9.63809387855008e-09,
+                "relative_l2": 9.288518043604199e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4227294921875
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 9.63809387855008e-09,
+                "relative_l2": 9.288518043604199e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4227294921875
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            },
+            "triton": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 4.5335308840321886e-08,
+                "relative_l2": 9.305406933890481e-08,
+                "max_abs": 3.5762786865234375e-07,
+                "bf16_exact_fraction": 0.44229406118392944
+              },
+              "up_residual_fp32": {
+                "rmse": 4.4605343418879784e-08,
+                "relative_l2": 9.369425413296995e-08,
+                "max_abs": 2.384185791015625e-07,
+                "bf16_exact_fraction": 0.4451349675655365
+              },
+              "down_residual_fp32": {
+                "rmse": 9.63809387855008e-09,
+                "relative_l2": 9.288518043604199e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4227294921875
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 9.63809387855008e-09,
+                "relative_l2": 9.288518043604199e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4227294921875
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            }
+          },
+          "timing": {
+            "reference": {
+              "gate": {
+                "median_ms": 0.8201760053634644,
+                "peak_extra_allocated_bytes": 9588736
+              },
+              "up": {
+                "median_ms": 0.8129760026931763,
+                "peak_extra_allocated_bytes": 9588736
+              },
+              "down": {
+                "median_ms": 1.0871840119361877,
+                "peak_extra_allocated_bytes": 9598976
+              },
+              "gate_up_pair": {
+                "median_ms": 1.513808012008667,
+                "peak_extra_allocated_bytes": 9600000
+              },
+              "expert": {
+                "median_ms": 2.774191975593567,
+                "peak_extra_allocated_bytes": 9737216
+              },
+              "moe": {
+                "median_ms": 6.233343839645386,
+                "peak_extra_allocated_bytes": 9837568
+              }
+            },
+            "triton_legacy": {
+              "gate": {
+                "median_ms": 0.0716480016708374,
+                "peak_extra_allocated_bytes": 33792
+              },
+              "up": {
+                "median_ms": 0.0711359977722168,
+                "peak_extra_allocated_bytes": 33792
+              },
+              "down": {
+                "median_ms": 0.09099199995398521,
+                "peak_extra_allocated_bytes": 49152
+              },
+              "gate_up_pair": {
+                "median_ms": 0.11308800056576729,
+                "peak_extra_allocated_bytes": 45056
+              },
+              "expert": {
+                "median_ms": 0.3100159913301468,
+                "peak_extra_allocated_bytes": 187392
+              },
+              "moe": {
+                "median_ms": 1.1968160271644592,
+                "peak_extra_allocated_bytes": 287744
+              }
+            },
+            "triton": {
+              "gate": {
+                "median_ms": 0.07267200201749802,
+                "peak_extra_allocated_bytes": 33792
+              },
+              "up": {
+                "median_ms": 0.07089599967002869,
+                "peak_extra_allocated_bytes": 33792
+              },
+              "down": {
+                "median_ms": 0.09105600044131279,
+                "peak_extra_allocated_bytes": 49152
+              },
+              "gate_up_pair": {
+                "median_ms": 0.11319999769330025,
+                "peak_extra_allocated_bytes": 67584
+              },
+              "expert": {
+                "median_ms": 0.31385600566864014,
+                "peak_extra_allocated_bytes": 187392
+              },
+              "moe": {
+                "median_ms": 1.1713280081748962,
+                "peak_extra_allocated_bytes": 287744
+              }
+            }
+          },
+          "routing_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          },
+          "singleton_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          }
+        },
+        "32": {
+          "numerical": {
+            "reference": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            },
+            "triton_legacy": {
+              "gate_residual": {
+                "rmse": 4.2701650548870873e-10,
+                "relative_l2": 8.907812820702077e-10,
+                "max_abs": 8.940696716308594e-08,
+                "bf16_exact_fraction": 0.9999556541442871
+              },
+              "up_residual": {
+                "rmse": 1.8438700863043778e-05,
+                "relative_l2": 3.845652463496663e-05,
+                "max_abs": 0.00390625,
+                "bf16_exact_fraction": 0.9999112486839294
+              },
+              "down_residual": {
+                "rmse": 2.6202358640148304e-05,
+                "relative_l2": 0.0002579831925686449,
+                "max_abs": 0.0009765625,
+                "bf16_exact_fraction": 0.994171142578125
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 1.840279219322838e-05,
+                "relative_l2": 2.9325792638701387e-05,
+                "max_abs": 0.00390625,
+                "bf16_exact_fraction": 0.9999778270721436
+              },
+              "swiglu": {
+                "rmse": 1.782770596037153e-05,
+                "relative_l2": 8.063365385169163e-05,
+                "max_abs": 0.0037841796875,
+                "bf16_exact_fraction": 0.9999778270721436
+              },
+              "expert": {
+                "rmse": 3.953185660066083e-05,
+                "relative_l2": 0.00029035357874818146,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9953155517578125
+              },
+              "expert_forward": {
+                "rmse": 3.953185660066083e-05,
+                "relative_l2": 0.00029035357874818146,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9953155517578125
+              },
+              "gate_residual_fp32": {
+                "rmse": 7.216584663183312e-08,
+                "relative_l2": 1.5054254731694527e-07,
+                "max_abs": 7.152557373046875e-07,
+                "bf16_exact_fraction": 0.29905009269714355
+              },
+              "up_residual_fp32": {
+                "rmse": 7.242732635859284e-08,
+                "relative_l2": 1.510551328465226e-07,
+                "max_abs": 7.152557373046875e-07,
+                "bf16_exact_fraction": 0.30029296875
+              },
+              "down_residual_fp32": {
+                "rmse": 8.404596883337945e-06,
+                "relative_l2": 8.274906576843932e-05,
+                "max_abs": 0.00015142560005187988,
+                "bf16_exact_fraction": 0.2964630126953125
+              },
+              "down_residual_common_input": {
+                "rmse": 3.253907213118801e-11,
+                "relative_l2": 3.2037320019107085e-10,
+                "max_abs": 7.450580596923828e-09,
+                "bf16_exact_fraction": 0.999969482421875
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 1.54990882350603e-08,
+                "relative_l2": 1.5259924168731231e-07,
+                "max_abs": 1.4901161193847656e-07,
+                "bf16_exact_fraction": 0.3065032958984375
+              },
+              "moe": {
+                "rmse": 2.1324806311895372e-06,
+                "relative_l2": 2.6823692678590305e-05,
+                "max_abs": 0.00048828125,
+                "bf16_exact_fraction": 0.999969482421875
+              }
+            },
+            "triton": {
+              "gate_residual": {
+                "rmse": 1.4377182822045143e-07,
+                "relative_l2": 2.9991639394211234e-07,
+                "max_abs": 3.0517578125e-05,
+                "bf16_exact_fraction": 0.9999556541442871
+              },
+              "up_residual": {
+                "rmse": 1.8447666661813855e-05,
+                "relative_l2": 3.847522384603508e-05,
+                "max_abs": 0.00390625,
+                "bf16_exact_fraction": 0.9999112486839294
+              },
+              "down_residual": {
+                "rmse": 2.5923189241439104e-05,
+                "relative_l2": 0.0002552345395088196,
+                "max_abs": 0.0009765625,
+                "bf16_exact_fraction": 0.9942169189453125
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 1.840279219322838e-05,
+                "relative_l2": 2.9325792638701387e-05,
+                "max_abs": 0.00390625,
+                "bf16_exact_fraction": 0.9999778270721436
+              },
+              "swiglu": {
+                "rmse": 1.782770596037153e-05,
+                "relative_l2": 8.063365385169163e-05,
+                "max_abs": 0.0037841796875,
+                "bf16_exact_fraction": 0.9999778270721436
+              },
+              "expert": {
+                "rmse": 3.934737469535321e-05,
+                "relative_l2": 0.0002889985917136073,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.995330810546875
+              },
+              "expert_forward": {
+                "rmse": 3.934737469535321e-05,
+                "relative_l2": 0.0002889985917136073,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.995330810546875
+              },
+              "gate_residual_fp32": {
+                "rmse": 7.858082540224132e-08,
+                "relative_l2": 1.6392458235259255e-07,
+                "max_abs": 8.344650268554688e-07,
+                "bf16_exact_fraction": 0.42325109243392944
+              },
+              "up_residual_fp32": {
+                "rmse": 7.830060155811225e-08,
+                "relative_l2": 1.633044917070947e-07,
+                "max_abs": 8.344650268554688e-07,
+                "bf16_exact_fraction": 0.42460495233535767
+              },
+              "down_residual_fp32": {
+                "rmse": 8.40470693219686e-06,
+                "relative_l2": 8.275014988612384e-05,
+                "max_abs": 0.00015148520469665527,
+                "bf16_exact_fraction": 0.386962890625
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 1.7237452354379457e-08,
+                "relative_l2": 1.6971463878689974e-07,
+                "max_abs": 1.7881393432617188e-07,
+                "bf16_exact_fraction": 0.3989715576171875
+              },
+              "moe": {
+                "rmse": 2.1324806311895372e-06,
+                "relative_l2": 2.6823692678590305e-05,
+                "max_abs": 0.00048828125,
+                "bf16_exact_fraction": 0.999969482421875
+              }
+            }
+          },
+          "timing": {
+            "reference": {
+              "gate": {
+                "median_ms": 0.694784015417099,
+                "peak_extra_allocated_bytes": 10649600
+              },
+              "up": {
+                "median_ms": 0.762688010931015,
+                "peak_extra_allocated_bytes": 10649600
+              },
+              "down": {
+                "median_ms": 1.185200035572052,
+                "peak_extra_allocated_bytes": 10731520
+              },
+              "gate_up_pair": {
+                "median_ms": 1.6545599699020386,
+                "peak_extra_allocated_bytes": 10739712
+              },
+              "expert": {
+                "median_ms": 3.031567931175232,
+                "peak_extra_allocated_bytes": 11837440
+              },
+              "moe": {
+                "median_ms": 6.926671981811523,
+                "peak_extra_allocated_bytes": 11289088
+              }
+            },
+            "triton_legacy": {
+              "gate": {
+                "median_ms": 0.30031999945640564,
+                "peak_extra_allocated_bytes": 270336
+              },
+              "up": {
+                "median_ms": 0.29867199063301086,
+                "peak_extra_allocated_bytes": 270336
+              },
+              "down": {
+                "median_ms": 0.4123840034008026,
+                "peak_extra_allocated_bytes": 393216
+              },
+              "gate_up_pair": {
+                "median_ms": 0.5563839972019196,
+                "peak_extra_allocated_bytes": 360448
+              },
+              "expert": {
+                "median_ms": 1.033344030380249,
+                "peak_extra_allocated_bytes": 1499136
+              },
+              "moe": {
+                "median_ms": 2.0261919498443604,
+                "peak_extra_allocated_bytes": 1352704
+              }
+            },
+            "triton": {
+              "gate": {
+                "median_ms": 0.2252800017595291,
+                "peak_extra_allocated_bytes": 270336
+              },
+              "up": {
+                "median_ms": 0.22499199956655502,
+                "peak_extra_allocated_bytes": 270336
+              },
+              "down": {
+                "median_ms": 0.22499199956655502,
+                "peak_extra_allocated_bytes": 393216
+              },
+              "gate_up_pair": {
+                "median_ms": 0.39476799964904785,
+                "peak_extra_allocated_bytes": 540672
+              },
+              "expert": {
+                "median_ms": 0.7132799923419952,
+                "peak_extra_allocated_bytes": 1499136
+              },
+              "moe": {
+                "median_ms": 2.028671979904175,
+                "peak_extra_allocated_bytes": 1352704
+              }
+            }
+          },
+          "routing_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          },
+          "singleton_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          }
+        },
+        "128": {
+          "numerical": {
+            "reference": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            },
+            "triton_legacy": {
+              "gate_residual": {
+                "rmse": 4.742836608784273e-06,
+                "relative_l2": 9.87507064564852e-06,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.99993896484375
+              },
+              "up_residual": {
+                "rmse": 5.773314910584304e-07,
+                "relative_l2": 1.2000151627944433e-06,
+                "max_abs": 0.000244140625,
+                "bf16_exact_fraction": 0.9999611973762512
+              },
+              "down_residual": {
+                "rmse": 5.7803254094324075e-06,
+                "relative_l2": 5.716925079468638e-05,
+                "max_abs": 0.0009765625,
+                "bf16_exact_fraction": 0.9995536804199219
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 9.20139609661419e-06,
+                "relative_l2": 1.4609670870413538e-05,
+                "max_abs": 0.00390625,
+                "bf16_exact_fraction": 0.9999944567680359
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 1.1501745120767737e-06,
+                "relative_l2": 5.238599442236591e-06,
+                "max_abs": 0.00048828125,
+                "bf16_exact_fraction": 0.9999944567680359
+              },
+              "expert": {
+                "rmse": 9.500471605861094e-06,
+                "relative_l2": 7.038406329229474e-05,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9997329711914062
+              },
+              "expert_forward": {
+                "rmse": 9.500471605861094e-06,
+                "relative_l2": 7.038406329229474e-05,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9997329711914062
+              },
+              "gate_residual_fp32": {
+                "rmse": 7.319469830235903e-08,
+                "relative_l2": 1.5239803019539977e-07,
+                "max_abs": 8.344650268554688e-07,
+                "bf16_exact_fraction": 0.3011974096298218
+              },
+              "up_residual_fp32": {
+                "rmse": 7.267481549888544e-08,
+                "relative_l2": 1.5105757711353363e-07,
+                "max_abs": 8.344650268554688e-07,
+                "bf16_exact_fraction": 0.30088669061660767
+              },
+              "down_residual_fp32": {
+                "rmse": 7.365733836195432e-07,
+                "relative_l2": 7.284887942660134e-06,
+                "max_abs": 2.656877040863037e-05,
+                "bf16_exact_fraction": 0.2998542785644531
+              },
+              "down_residual_common_input": {
+                "rmse": 2.906302597693866e-06,
+                "relative_l2": 2.8744254450430162e-05,
+                "max_abs": 0.0009765625,
+                "bf16_exact_fraction": 0.9999351501464844
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 1.541443594987868e-08,
+                "relative_l2": 1.5245248619066842e-07,
+                "max_abs": 1.7881393432617188e-07,
+                "bf16_exact_fraction": 0.3019371032714844
+              },
+              "moe": {
+                "rmse": 5.674662588717183e-06,
+                "relative_l2": 6.920072337379679e-05,
+                "max_abs": 0.0009765625,
+                "bf16_exact_fraction": 0.9997329711914062
+              }
+            },
+            "triton": {
+              "gate_residual": {
+                "rmse": 5.63468893233221e-06,
+                "relative_l2": 1.1731997801689431e-05,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9999611973762512
+              },
+              "up_residual": {
+                "rmse": 4.689835350291105e-06,
+                "relative_l2": 9.74807971942937e-06,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.99993896484375
+              },
+              "down_residual": {
+                "rmse": 1.0886991731240414e-05,
+                "relative_l2": 0.00010767580533865839,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.99835205078125
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 1.3012739145779051e-05,
+                "relative_l2": 2.0661194866988808e-05,
+                "max_abs": 0.00390625,
+                "bf16_exact_fraction": 0.9999889135360718
+              },
+              "up_shared_plus_residual": {
+                "rmse": 4.600698048307095e-06,
+                "relative_l2": 7.317492872971343e-06,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9999944567680359
+              },
+              "swiglu": {
+                "rmse": 4.748960691358661e-06,
+                "relative_l2": 2.162967575713992e-05,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9999833703041077
+              },
+              "expert": {
+                "rmse": 1.9252844140282832e-05,
+                "relative_l2": 0.00014263432240113616,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9989166259765625
+              },
+              "expert_forward": {
+                "rmse": 1.9252844140282832e-05,
+                "relative_l2": 0.00014263432240113616,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9989166259765625
+              },
+              "gate_residual_fp32": {
+                "rmse": 8.029723375102549e-08,
+                "relative_l2": 1.6718617246169742e-07,
+                "max_abs": 9.5367431640625e-07,
+                "bf16_exact_fraction": 0.40427470207214355
+              },
+              "up_residual_fp32": {
+                "rmse": 7.993246953219568e-08,
+                "relative_l2": 1.6614289677363558e-07,
+                "max_abs": 9.5367431640625e-07,
+                "bf16_exact_fraction": 0.40536221861839294
+              },
+              "down_residual_fp32": {
+                "rmse": 2.5578012810001383e-06,
+                "relative_l2": 2.5297271349700168e-05,
+                "max_abs": 9.231269359588623e-05,
+                "bf16_exact_fraction": 0.3822669982910156
+              },
+              "down_residual_common_input": {
+                "rmse": 2.3903951387183042e-06,
+                "relative_l2": 2.3641767256776802e-05,
+                "max_abs": 0.0009765625,
+                "bf16_exact_fraction": 0.9999427795410156
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 1.7255285200690196e-08,
+                "relative_l2": 1.7065892166101548e-07,
+                "max_abs": 2.384185791015625e-07,
+                "bf16_exact_fraction": 0.3912086486816406
+              },
+              "moe": {
+                "rmse": 8.440531019004993e-06,
+                "relative_l2": 0.00010292961815139279,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9995307922363281
+              }
+            }
+          },
+          "timing": {
+            "reference": {
+              "gate": {
+                "median_ms": 0.8328959941864014,
+                "peak_extra_allocated_bytes": 15335424
+              },
+              "up": {
+                "median_ms": 0.7734079957008362,
+                "peak_extra_allocated_bytes": 15335424
+              },
+              "down": {
+                "median_ms": 1.0581440329551697,
+                "peak_extra_allocated_bytes": 15663104
+              },
+              "gate_up_pair": {
+                "median_ms": 1.6430400013923645,
+                "peak_extra_allocated_bytes": 15695872
+              },
+              "expert": {
+                "median_ms": 3.0054240226745605,
+                "peak_extra_allocated_bytes": 20086784
+              },
+              "moe": {
+                "median_ms": 6.950191974639893,
+                "peak_extra_allocated_bytes": 16327168
+              }
+            },
+            "triton_legacy": {
+              "gate": {
+                "median_ms": 1.0672320127487183,
+                "peak_extra_allocated_bytes": 1081344
+              },
+              "up": {
+                "median_ms": 1.0522719621658325,
+                "peak_extra_allocated_bytes": 1081344
+              },
+              "down": {
+                "median_ms": 1.506111979484558,
+                "peak_extra_allocated_bytes": 1572864
+              },
+              "gate_up_pair": {
+                "median_ms": 2.073199987411499,
+                "peak_extra_allocated_bytes": 1441792
+              },
+              "expert": {
+                "median_ms": 3.70415997505188,
+                "peak_extra_allocated_bytes": 5996544
+              },
+              "moe": {
+                "median_ms": 4.513920068740845,
+                "peak_extra_allocated_bytes": 5087744
+              }
+            },
+            "triton": {
+              "gate": {
+                "median_ms": 0.3633599877357483,
+                "peak_extra_allocated_bytes": 1081344
+              },
+              "up": {
+                "median_ms": 0.3622239977121353,
+                "peak_extra_allocated_bytes": 1081344
+              },
+              "down": {
+                "median_ms": 0.6679679751396179,
+                "peak_extra_allocated_bytes": 1572864
+              },
+              "gate_up_pair": {
+                "median_ms": 0.685232013463974,
+                "peak_extra_allocated_bytes": 2293760
+              },
+              "expert": {
+                "median_ms": 1.4616320133209229,
+                "peak_extra_allocated_bytes": 5996544
+              },
+              "moe": {
+                "median_ms": 2.416432023048401,
+                "peak_extra_allocated_bytes": 5087744
+              }
+            }
+          },
+          "routing_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          },
+          "singleton_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          }
+        }
+      }
+    },
+    "mixtral": {
+      "checkpoint_format": "rescode-direct-qjl-v1",
+      "checkpoint_bytes": 61912555,
+      "shape": {
+        "hidden": 2048,
+        "intermediate": 1408,
+        "qjl_d": 8192,
+        "experts": 4,
+        "qjl_experts": 2,
+        "bf16_singletons": 2
+      },
+      "tokens": {
+        "1": {
+          "numerical": {
+            "reference": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            },
+            "triton_legacy": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 3.8950076941546286e-08,
+                "relative_l2": 8.100476378558596e-08,
+                "max_abs": 2.384185791015625e-07,
+                "bf16_exact_fraction": 0.4609375
+              },
+              "up_residual_fp32": {
+                "rmse": 4.040643020175594e-08,
+                "relative_l2": 8.584864730210029e-08,
+                "max_abs": 2.384185791015625e-07,
+                "bf16_exact_fraction": 0.4573863744735718
+              },
+              "down_residual_fp32": {
+                "rmse": 7.774160870610558e-09,
+                "relative_l2": 8.051146238585716e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4697265625
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 7.774160870610558e-09,
+                "relative_l2": 8.051146238585716e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4697265625
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            },
+            "triton": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 3.8950076941546286e-08,
+                "relative_l2": 8.100476378558596e-08,
+                "max_abs": 2.384185791015625e-07,
+                "bf16_exact_fraction": 0.4609375
+              },
+              "up_residual_fp32": {
+                "rmse": 4.040643020175594e-08,
+                "relative_l2": 8.584864730210029e-08,
+                "max_abs": 2.384185791015625e-07,
+                "bf16_exact_fraction": 0.4573863744735718
+              },
+              "down_residual_fp32": {
+                "rmse": 7.774160870610558e-09,
+                "relative_l2": 8.051146238585716e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4697265625
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 7.774160870610558e-09,
+                "relative_l2": 8.051146238585716e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4697265625
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            }
+          },
+          "timing": {
+            "reference": {
+              "gate": {
+                "median_ms": 0.8916960060596466,
+                "peak_extra_allocated_bytes": 9475072
+              },
+              "up": {
+                "median_ms": 0.8275040090084076,
+                "peak_extra_allocated_bytes": 9475072
+              },
+              "down": {
+                "median_ms": 1.184544026851654,
+                "peak_extra_allocated_bytes": 9477632
+              },
+              "gate_up_pair": {
+                "median_ms": 1.6476479768753052,
+                "peak_extra_allocated_bytes": 9478144
+              },
+              "expert": {
+                "median_ms": 3.0291199684143066,
+                "peak_extra_allocated_bytes": 9513472
+              },
+              "moe": {
+                "median_ms": 3.48745596408844,
+                "peak_extra_allocated_bytes": 9540096
+              }
+            },
+            "triton_legacy": {
+              "gate": {
+                "median_ms": 0.05689600110054016,
+                "peak_extra_allocated_bytes": 8704
+              },
+              "up": {
+                "median_ms": 0.05655999854207039,
+                "peak_extra_allocated_bytes": 8704
+              },
+              "down": {
+                "median_ms": 0.06172800064086914,
+                "peak_extra_allocated_bytes": 12288
+              },
+              "gate_up_pair": {
+                "median_ms": 0.09896000102162361,
+                "peak_extra_allocated_bytes": 11776
+              },
+              "expert": {
+                "median_ms": 0.2932160049676895,
+                "peak_extra_allocated_bytes": 48128
+              },
+              "moe": {
+                "median_ms": 0.8307679891586304,
+                "peak_extra_allocated_bytes": 74752
+              }
+            },
+            "triton": {
+              "gate": {
+                "median_ms": 0.06172800064086914,
+                "peak_extra_allocated_bytes": 8704
+              },
+              "up": {
+                "median_ms": 0.05644799955189228,
+                "peak_extra_allocated_bytes": 8704
+              },
+              "down": {
+                "median_ms": 0.0620959997177124,
+                "peak_extra_allocated_bytes": 12288
+              },
+              "gate_up_pair": {
+                "median_ms": 0.08552000299096107,
+                "peak_extra_allocated_bytes": 17408
+              },
+              "expert": {
+                "median_ms": 0.29763199388980865,
+                "peak_extra_allocated_bytes": 48128
+              },
+              "moe": {
+                "median_ms": 0.8374079763889313,
+                "peak_extra_allocated_bytes": 74752
+              }
+            }
+          },
+          "routing_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          },
+          "singleton_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          }
+        },
+        "4": {
+          "numerical": {
+            "reference": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            },
+            "triton_legacy": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 4.5335308840321886e-08,
+                "relative_l2": 9.305406933890481e-08,
+                "max_abs": 3.5762786865234375e-07,
+                "bf16_exact_fraction": 0.44229406118392944
+              },
+              "up_residual_fp32": {
+                "rmse": 4.4605343418879784e-08,
+                "relative_l2": 9.369425413296995e-08,
+                "max_abs": 2.384185791015625e-07,
+                "bf16_exact_fraction": 0.4451349675655365
+              },
+              "down_residual_fp32": {
+                "rmse": 9.63809387855008e-09,
+                "relative_l2": 9.288518043604199e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4227294921875
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 9.63809387855008e-09,
+                "relative_l2": 9.288518043604199e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4227294921875
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            },
+            "triton": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 4.5335308840321886e-08,
+                "relative_l2": 9.305406933890481e-08,
+                "max_abs": 3.5762786865234375e-07,
+                "bf16_exact_fraction": 0.44229406118392944
+              },
+              "up_residual_fp32": {
+                "rmse": 4.4605343418879784e-08,
+                "relative_l2": 9.369425413296995e-08,
+                "max_abs": 2.384185791015625e-07,
+                "bf16_exact_fraction": 0.4451349675655365
+              },
+              "down_residual_fp32": {
+                "rmse": 9.63809387855008e-09,
+                "relative_l2": 9.288518043604199e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4227294921875
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 9.63809387855008e-09,
+                "relative_l2": 9.288518043604199e-08,
+                "max_abs": 5.960464477539063e-08,
+                "bf16_exact_fraction": 0.4227294921875
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            }
+          },
+          "timing": {
+            "reference": {
+              "gate": {
+                "median_ms": 0.8344640135765076,
+                "peak_extra_allocated_bytes": 9588736
+              },
+              "up": {
+                "median_ms": 0.8170080184936523,
+                "peak_extra_allocated_bytes": 9588736
+              },
+              "down": {
+                "median_ms": 1.1227200031280518,
+                "peak_extra_allocated_bytes": 9598976
+              },
+              "gate_up_pair": {
+                "median_ms": 1.5152640342712402,
+                "peak_extra_allocated_bytes": 9600000
+              },
+              "expert": {
+                "median_ms": 2.794719934463501,
+                "peak_extra_allocated_bytes": 9737216
+              },
+              "moe": {
+                "median_ms": 6.17192006111145,
+                "peak_extra_allocated_bytes": 9837568
+              }
+            },
+            "triton_legacy": {
+              "gate": {
+                "median_ms": 0.07020799815654755,
+                "peak_extra_allocated_bytes": 33792
+              },
+              "up": {
+                "median_ms": 0.07056000083684921,
+                "peak_extra_allocated_bytes": 33792
+              },
+              "down": {
+                "median_ms": 0.09113600105047226,
+                "peak_extra_allocated_bytes": 49152
+              },
+              "gate_up_pair": {
+                "median_ms": 0.11323199793696404,
+                "peak_extra_allocated_bytes": 45056
+              },
+              "expert": {
+                "median_ms": 0.30934400856494904,
+                "peak_extra_allocated_bytes": 187392
+              },
+              "moe": {
+                "median_ms": 1.1318079829216003,
+                "peak_extra_allocated_bytes": 287744
+              }
+            },
+            "triton": {
+              "gate": {
+                "median_ms": 0.07046400010585785,
+                "peak_extra_allocated_bytes": 33792
+              },
+              "up": {
+                "median_ms": 0.07025599852204323,
+                "peak_extra_allocated_bytes": 33792
+              },
+              "down": {
+                "median_ms": 0.09014400094747543,
+                "peak_extra_allocated_bytes": 49152
+              },
+              "gate_up_pair": {
+                "median_ms": 0.1125440001487732,
+                "peak_extra_allocated_bytes": 67584
+              },
+              "expert": {
+                "median_ms": 0.31057600677013397,
+                "peak_extra_allocated_bytes": 187392
+              },
+              "moe": {
+                "median_ms": 1.1077759861946106,
+                "peak_extra_allocated_bytes": 287744
+              }
+            }
+          },
+          "routing_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          },
+          "singleton_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          }
+        },
+        "32": {
+          "numerical": {
+            "reference": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            },
+            "triton_legacy": {
+              "gate_residual": {
+                "rmse": 4.2701650548870873e-10,
+                "relative_l2": 8.907812820702077e-10,
+                "max_abs": 8.940696716308594e-08,
+                "bf16_exact_fraction": 0.9999556541442871
+              },
+              "up_residual": {
+                "rmse": 1.8438700863043778e-05,
+                "relative_l2": 3.845652463496663e-05,
+                "max_abs": 0.00390625,
+                "bf16_exact_fraction": 0.9999112486839294
+              },
+              "down_residual": {
+                "rmse": 2.6202358640148304e-05,
+                "relative_l2": 0.0002579831925686449,
+                "max_abs": 0.0009765625,
+                "bf16_exact_fraction": 0.994171142578125
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 1.840279219322838e-05,
+                "relative_l2": 2.9325792638701387e-05,
+                "max_abs": 0.00390625,
+                "bf16_exact_fraction": 0.9999778270721436
+              },
+              "swiglu": {
+                "rmse": 1.782770596037153e-05,
+                "relative_l2": 8.063365385169163e-05,
+                "max_abs": 0.0037841796875,
+                "bf16_exact_fraction": 0.9999778270721436
+              },
+              "expert": {
+                "rmse": 3.953185660066083e-05,
+                "relative_l2": 0.00029035357874818146,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9953155517578125
+              },
+              "expert_forward": {
+                "rmse": 3.953185660066083e-05,
+                "relative_l2": 0.00029035357874818146,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9953155517578125
+              },
+              "gate_residual_fp32": {
+                "rmse": 7.216584663183312e-08,
+                "relative_l2": 1.5054254731694527e-07,
+                "max_abs": 7.152557373046875e-07,
+                "bf16_exact_fraction": 0.29905009269714355
+              },
+              "up_residual_fp32": {
+                "rmse": 7.242732635859284e-08,
+                "relative_l2": 1.510551328465226e-07,
+                "max_abs": 7.152557373046875e-07,
+                "bf16_exact_fraction": 0.30029296875
+              },
+              "down_residual_fp32": {
+                "rmse": 8.404596883337945e-06,
+                "relative_l2": 8.274906576843932e-05,
+                "max_abs": 0.00015142560005187988,
+                "bf16_exact_fraction": 0.2964630126953125
+              },
+              "down_residual_common_input": {
+                "rmse": 3.253907213118801e-11,
+                "relative_l2": 3.2037320019107085e-10,
+                "max_abs": 7.450580596923828e-09,
+                "bf16_exact_fraction": 0.999969482421875
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 1.54990882350603e-08,
+                "relative_l2": 1.5259924168731231e-07,
+                "max_abs": 1.4901161193847656e-07,
+                "bf16_exact_fraction": 0.3065032958984375
+              },
+              "moe": {
+                "rmse": 4.76837158203125e-07,
+                "relative_l2": 5.4396969062509015e-06,
+                "max_abs": 0.0001220703125,
+                "bf16_exact_fraction": 0.9999847412109375
+              }
+            },
+            "triton": {
+              "gate_residual": {
+                "rmse": 1.4377182822045143e-07,
+                "relative_l2": 2.9991639394211234e-07,
+                "max_abs": 3.0517578125e-05,
+                "bf16_exact_fraction": 0.9999556541442871
+              },
+              "up_residual": {
+                "rmse": 1.8447666661813855e-05,
+                "relative_l2": 3.847522384603508e-05,
+                "max_abs": 0.00390625,
+                "bf16_exact_fraction": 0.9999112486839294
+              },
+              "down_residual": {
+                "rmse": 2.5923189241439104e-05,
+                "relative_l2": 0.0002552345395088196,
+                "max_abs": 0.0009765625,
+                "bf16_exact_fraction": 0.9942169189453125
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 1.840279219322838e-05,
+                "relative_l2": 2.9325792638701387e-05,
+                "max_abs": 0.00390625,
+                "bf16_exact_fraction": 0.9999778270721436
+              },
+              "swiglu": {
+                "rmse": 1.782770596037153e-05,
+                "relative_l2": 8.063365385169163e-05,
+                "max_abs": 0.0037841796875,
+                "bf16_exact_fraction": 0.9999778270721436
+              },
+              "expert": {
+                "rmse": 3.934737469535321e-05,
+                "relative_l2": 0.0002889985917136073,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.995330810546875
+              },
+              "expert_forward": {
+                "rmse": 3.934737469535321e-05,
+                "relative_l2": 0.0002889985917136073,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.995330810546875
+              },
+              "gate_residual_fp32": {
+                "rmse": 7.858082540224132e-08,
+                "relative_l2": 1.6392458235259255e-07,
+                "max_abs": 8.344650268554688e-07,
+                "bf16_exact_fraction": 0.42325109243392944
+              },
+              "up_residual_fp32": {
+                "rmse": 7.830060155811225e-08,
+                "relative_l2": 1.633044917070947e-07,
+                "max_abs": 8.344650268554688e-07,
+                "bf16_exact_fraction": 0.42460495233535767
+              },
+              "down_residual_fp32": {
+                "rmse": 8.40470693219686e-06,
+                "relative_l2": 8.275014988612384e-05,
+                "max_abs": 0.00015148520469665527,
+                "bf16_exact_fraction": 0.386962890625
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 1.7237452354379457e-08,
+                "relative_l2": 1.6971463878689974e-07,
+                "max_abs": 1.7881393432617188e-07,
+                "bf16_exact_fraction": 0.3989715576171875
+              },
+              "moe": {
+                "rmse": 4.76837158203125e-07,
+                "relative_l2": 5.4396969062509015e-06,
+                "max_abs": 0.0001220703125,
+                "bf16_exact_fraction": 0.9999847412109375
+              }
+            }
+          },
+          "timing": {
+            "reference": {
+              "gate": {
+                "median_ms": 0.8303999900817871,
+                "peak_extra_allocated_bytes": 10649600
+              },
+              "up": {
+                "median_ms": 0.833728015422821,
+                "peak_extra_allocated_bytes": 10649600
+              },
+              "down": {
+                "median_ms": 1.1910240054130554,
+                "peak_extra_allocated_bytes": 10731520
+              },
+              "gate_up_pair": {
+                "median_ms": 1.655199944972992,
+                "peak_extra_allocated_bytes": 10739712
+              },
+              "expert": {
+                "median_ms": 3.0241119861602783,
+                "peak_extra_allocated_bytes": 11837440
+              },
+              "moe": {
+                "median_ms": 6.862032175064087,
+                "peak_extra_allocated_bytes": 11289088
+              }
+            },
+            "triton_legacy": {
+              "gate": {
+                "median_ms": 0.29766398668289185,
+                "peak_extra_allocated_bytes": 270336
+              },
+              "up": {
+                "median_ms": 0.29760000109672546,
+                "peak_extra_allocated_bytes": 270336
+              },
+              "down": {
+                "median_ms": 0.4150400012731552,
+                "peak_extra_allocated_bytes": 393216
+              },
+              "gate_up_pair": {
+                "median_ms": 0.5579679906368256,
+                "peak_extra_allocated_bytes": 360448
+              },
+              "expert": {
+                "median_ms": 1.0376960039138794,
+                "peak_extra_allocated_bytes": 1499136
+              },
+              "moe": {
+                "median_ms": 1.942799985408783,
+                "peak_extra_allocated_bytes": 1352704
+              }
+            },
+            "triton": {
+              "gate": {
+                "median_ms": 0.22601599991321564,
+                "peak_extra_allocated_bytes": 270336
+              },
+              "up": {
+                "median_ms": 0.22591999918222427,
+                "peak_extra_allocated_bytes": 270336
+              },
+              "down": {
+                "median_ms": 0.22494399547576904,
+                "peak_extra_allocated_bytes": 393216
+              },
+              "gate_up_pair": {
+                "median_ms": 0.39376001060009,
+                "peak_extra_allocated_bytes": 540672
+              },
+              "expert": {
+                "median_ms": 0.7108160257339478,
+                "peak_extra_allocated_bytes": 1499136
+              },
+              "moe": {
+                "median_ms": 1.9513599872589111,
+                "peak_extra_allocated_bytes": 1352704
+              }
+            }
+          },
+          "routing_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          },
+          "singleton_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          }
+        },
+        "128": {
+          "numerical": {
+            "reference": {
+              "gate_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "expert_forward": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "gate_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "up_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "moe": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              }
+            },
+            "triton_legacy": {
+              "gate_residual": {
+                "rmse": 4.742836608784273e-06,
+                "relative_l2": 9.87507064564852e-06,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.99993896484375
+              },
+              "up_residual": {
+                "rmse": 5.773314910584304e-07,
+                "relative_l2": 1.2000151627944433e-06,
+                "max_abs": 0.000244140625,
+                "bf16_exact_fraction": 0.9999611973762512
+              },
+              "down_residual": {
+                "rmse": 5.7803254094324075e-06,
+                "relative_l2": 5.716925079468638e-05,
+                "max_abs": 0.0009765625,
+                "bf16_exact_fraction": 0.9995536804199219
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 9.20139609661419e-06,
+                "relative_l2": 1.4609670870413538e-05,
+                "max_abs": 0.00390625,
+                "bf16_exact_fraction": 0.9999944567680359
+              },
+              "up_shared_plus_residual": {
+                "rmse": 0.0,
+                "relative_l2": 0.0,
+                "max_abs": 0.0,
+                "bf16_exact_fraction": 1.0
+              },
+              "swiglu": {
+                "rmse": 1.1501745120767737e-06,
+                "relative_l2": 5.238599442236591e-06,
+                "max_abs": 0.00048828125,
+                "bf16_exact_fraction": 0.9999944567680359
+              },
+              "expert": {
+                "rmse": 9.500471605861094e-06,
+                "relative_l2": 7.038406329229474e-05,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9997329711914062
+              },
+              "expert_forward": {
+                "rmse": 9.500471605861094e-06,
+                "relative_l2": 7.038406329229474e-05,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9997329711914062
+              },
+              "gate_residual_fp32": {
+                "rmse": 7.319469830235903e-08,
+                "relative_l2": 1.5239803019539977e-07,
+                "max_abs": 8.344650268554688e-07,
+                "bf16_exact_fraction": 0.3011974096298218
+              },
+              "up_residual_fp32": {
+                "rmse": 7.267481549888544e-08,
+                "relative_l2": 1.5105757711353363e-07,
+                "max_abs": 8.344650268554688e-07,
+                "bf16_exact_fraction": 0.30088669061660767
+              },
+              "down_residual_fp32": {
+                "rmse": 7.365733836195432e-07,
+                "relative_l2": 7.284887942660134e-06,
+                "max_abs": 2.656877040863037e-05,
+                "bf16_exact_fraction": 0.2998542785644531
+              },
+              "down_residual_common_input": {
+                "rmse": 2.906302597693866e-06,
+                "relative_l2": 2.8744254450430162e-05,
+                "max_abs": 0.0009765625,
+                "bf16_exact_fraction": 0.9999351501464844
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 1.541443594987868e-08,
+                "relative_l2": 1.5245248619066842e-07,
+                "max_abs": 1.7881393432617188e-07,
+                "bf16_exact_fraction": 0.3019371032714844
+              },
+              "moe": {
+                "rmse": 8.148524102580268e-06,
+                "relative_l2": 9.148132085101679e-05,
+                "max_abs": 0.0009765625,
+                "bf16_exact_fraction": 0.9996070861816406
+              }
+            },
+            "triton": {
+              "gate_residual": {
+                "rmse": 5.63468893233221e-06,
+                "relative_l2": 1.1731997801689431e-05,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9999611973762512
+              },
+              "up_residual": {
+                "rmse": 4.689835350291105e-06,
+                "relative_l2": 9.74807971942937e-06,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.99993896484375
+              },
+              "down_residual": {
+                "rmse": 1.0886991731240414e-05,
+                "relative_l2": 0.00010767580533865839,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.99835205078125
+              },
+              "gate_shared_plus_residual": {
+                "rmse": 1.3012739145779051e-05,
+                "relative_l2": 2.0661194866988808e-05,
+                "max_abs": 0.00390625,
+                "bf16_exact_fraction": 0.9999889135360718
+              },
+              "up_shared_plus_residual": {
+                "rmse": 4.600698048307095e-06,
+                "relative_l2": 7.317492872971343e-06,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9999944567680359
+              },
+              "swiglu": {
+                "rmse": 4.748960691358661e-06,
+                "relative_l2": 2.162967575713992e-05,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9999833703041077
+              },
+              "expert": {
+                "rmse": 1.9252844140282832e-05,
+                "relative_l2": 0.00014263432240113616,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9989166259765625
+              },
+              "expert_forward": {
+                "rmse": 1.9252844140282832e-05,
+                "relative_l2": 0.00014263432240113616,
+                "max_abs": 0.001953125,
+                "bf16_exact_fraction": 0.9989166259765625
+              },
+              "gate_residual_fp32": {
+                "rmse": 8.029723375102549e-08,
+                "relative_l2": 1.6718617246169742e-07,
+                "max_abs": 9.5367431640625e-07,
+                "bf16_exact_fraction": 0.40427470207214355
+              },
+              "up_residual_fp32": {
+                "rmse": 7.993246953219568e-08,
+                "relative_l2": 1.6614289677363558e-07,
+                "max_abs": 9.5367431640625e-07,
+                "bf16_exact_fraction": 0.40536221861839294
+              },
+              "down_residual_fp32": {
+                "rmse": 2.5578012810001383e-06,
+                "relative_l2": 2.5297271349700168e-05,
+                "max_abs": 9.231269359588623e-05,
+                "bf16_exact_fraction": 0.3822669982910156
+              },
+              "down_residual_common_input": {
+                "rmse": 2.3903951387183042e-06,
+                "relative_l2": 2.3641767256776802e-05,
+                "max_abs": 0.0009765625,
+                "bf16_exact_fraction": 0.9999427795410156
+              },
+              "down_residual_fp32_common_input": {
+                "rmse": 1.7255285200690196e-08,
+                "relative_l2": 1.7065892166101548e-07,
+                "max_abs": 2.384185791015625e-07,
+                "bf16_exact_fraction": 0.3912086486816406
+              },
+              "moe": {
+                "rmse": 9.242900887329597e-06,
+                "relative_l2": 0.00010376759746577591,
+                "max_abs": 0.0009765625,
+                "bf16_exact_fraction": 0.9993515014648438
+              }
+            }
+          },
+          "timing": {
+            "reference": {
+              "gate": {
+                "median_ms": 1.0158560276031494,
+                "peak_extra_allocated_bytes": 14286848
+              },
+              "up": {
+                "median_ms": 0.8228960037231445,
+                "peak_extra_allocated_bytes": 14286848
+              },
+              "down": {
+                "median_ms": 1.1880800127983093,
+                "peak_extra_allocated_bytes": 14614528
+              },
+              "gate_up_pair": {
+                "median_ms": 1.651311993598938,
+                "peak_extra_allocated_bytes": 14647296
+              },
+              "expert": {
+                "median_ms": 2.866736054420471,
+                "peak_extra_allocated_bytes": 19038208
+              },
+              "moe": {
+                "median_ms": 6.460544109344482,
+                "peak_extra_allocated_bytes": 16327168
+              }
+            },
+            "triton_legacy": {
+              "gate": {
+                "median_ms": 1.0519840121269226,
+                "peak_extra_allocated_bytes": 1081344
+              },
+              "up": {
+                "median_ms": 1.0523200035095215,
+                "peak_extra_allocated_bytes": 1081344
+              },
+              "down": {
+                "median_ms": 1.5106080174446106,
+                "peak_extra_allocated_bytes": 1572864
+              },
+              "gate_up_pair": {
+                "median_ms": 2.0789600610733032,
+                "peak_extra_allocated_bytes": 1441792
+              },
+              "expert": {
+                "median_ms": 3.7067840099334717,
+                "peak_extra_allocated_bytes": 5996544
+              },
+              "moe": {
+                "median_ms": 4.434031963348389,
+                "peak_extra_allocated_bytes": 5087744
+              }
+            },
+            "triton": {
+              "gate": {
+                "median_ms": 0.3639200031757355,
+                "peak_extra_allocated_bytes": 1081344
+              },
+              "up": {
+                "median_ms": 0.36320000886917114,
+                "peak_extra_allocated_bytes": 1081344
+              },
+              "down": {
+                "median_ms": 0.6678400039672852,
+                "peak_extra_allocated_bytes": 1572864
+              },
+              "gate_up_pair": {
+                "median_ms": 0.6808319985866547,
+                "peak_extra_allocated_bytes": 2293760
+              },
+              "expert": {
+                "median_ms": 1.459280014038086,
+                "peak_extra_allocated_bytes": 5996544
+              },
+              "moe": {
+                "median_ms": 2.3463679552078247,
+                "peak_extra_allocated_bytes": 5087744
+              }
+            }
+          },
+          "routing_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          },
+          "singleton_identical": {
+            "reference": true,
+            "triton_legacy": true,
+            "triton": true
+          }
+        }
+      }
+    }
+  }
+}

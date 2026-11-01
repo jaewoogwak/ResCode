@@ -235,17 +235,121 @@ class DirectQJLTests(unittest.TestCase):
 
     @unittest.skipUnless(torch.cuda.is_available(), "CUDA not available")
     def test_triton_packed_parity(self):
-        from rescode.qjl.core import qjl_triton
+        from rescode.qjl.core import qjl_triton, qjl_triton_legacy
+        from rescode.qjl.triton_kernel import packed_qjl_fused_gate_up
         w = torch.randn(9, 7, device="cuda")
         w[0].zero_()
-        x = torch.randn(3, 7, device="cuda")
-        for d in (127, 8193):
+        for d in (127, 8192, 8193, 16384):
             bank = ProjectionBank(d, 19)
             packed, norms = pack_residual(w, bank)
-            z = (x.half() @ bank.get(7, x.device)).float()
-            ref = qjl_reference(z, packed, norms, d)
-            got = qjl_triton(z, packed, norms, d)
-            self.assertTrue(torch.allclose(got, ref, atol=1e-4, rtol=1e-4))
+            self.assertEqual(bank.get(7, w.device).dtype, torch.float16)
+            self.assertEqual(norms.dtype, torch.float32)
+            up_packed, up_norms = pack_residual(w.flip(0), bank)
+            for tokens in (1, 4, 32, 128):
+                with self.subTest(d=d, tokens=tokens):
+                    x = torch.randn(tokens, 7, device="cuda")
+                    z = x.half() @ bank.get(7, x.device)
+                    ref = qjl_reference(z, packed, norms, d)
+                    got = qjl_triton(z, packed, norms, d)
+                    legacy = qjl_triton_legacy(z, packed, norms, d)
+                    fused_gate, fused_up = packed_qjl_fused_gate_up(
+                        z, packed, norms, up_packed, up_norms, d)
+                    self.assertTrue(torch.allclose(got, ref, atol=1e-4, rtol=1e-4))
+                    self.assertTrue(torch.allclose(got, legacy, atol=1e-4, rtol=1e-4))
+                    self.assertTrue(torch.allclose(fused_gate, ref, atol=1e-4, rtol=1e-4))
+                    self.assertTrue(torch.allclose(
+                        fused_up, qjl_reference(z, up_packed, up_norms, d),
+                        atol=1e-4, rtol=1e-4))
+
+    @unittest.skipUnless(torch.cuda.is_available(), "CUDA not available")
+    def test_three_backends_same_checkpoint_qwen_and_mixtral(self):
+        from rescode.qjl.core import qjl_triton_fused_gate_up
+        for family, factory in (("qwen", ToyModel), ("mixtral", ToyMixtralModel)):
+            for d in (127, 8192):
+                with self.subTest(family=family, d=d), tempfile.TemporaryDirectory() as temp:
+                    original = factory().to("cuda", dtype=torch.bfloat16)
+                    untouched = copy.deepcopy(original)
+                    groups = {0: [[0, 1], [2], [3]]}
+                    config = {"qjl_d": d, "projection_seed": 5, "base_method": "mean",
+                              "residual_mode": "qjl", "targets": "gate_up_down",
+                              "backend": "triton", "delta": 1e-3, "cg_iterations": 10}
+                    convert_model(original, family, groups, {0: torch.ones(4)},
+                                  {}, {}, config)
+                    path = str(Path(temp) / "qjl.pt")
+                    save_qjl_checkpoint(original, family, groups, config, path)
+                    models = {}
+                    for backend in ("reference", "triton_legacy", "triton"):
+                        model = copy.deepcopy(untouched)
+                        load_qjl_checkpoint(model, path, backend=backend)
+                        models[backend] = model
+                    block_name = "mlp" if family == "qwen" else "block_sparse_moe"
+                    blocks = {key: getattr(model.model.layers[0], block_name)
+                              for key, model in models.items()}
+                    for tokens in (1, 4, 32, 128):
+                        x = torch.randn(tokens, 7, device="cuda", dtype=torch.bfloat16)
+                        reference_output, reference_logits = blocks["reference"](x)
+                        reference_selected = torch.topk(reference_logits, 2, dim=-1).indices
+                        for backend in ("triton_legacy", "triton"):
+                            output, logits = blocks[backend](x)
+                            self.assertTrue(torch.equal(logits, reference_logits))
+                            self.assertTrue(torch.equal(
+                                torch.topk(logits, 2, dim=-1).indices, reference_selected))
+                            self.assertTrue(torch.allclose(output, reference_output,
+                                                           atol=0.02, rtol=0.02))
+                            for singleton in (2, 3):
+                                self.assertTrue(torch.equal(
+                                    blocks[backend].experts[singleton](x),
+                                    blocks["reference"].experts[singleton](x)))
+                        clusters = {key: block._qjl_clusters["0"]
+                                    for key, block in blocks.items()}
+                        packed = {key: cluster.residuals["0"]
+                                  for key, cluster in clusters.items()}
+                        p = models["reference"]._qjl_projection_bank.get(7, x.device)
+                        z = x.to(p.dtype) @ p
+                        gate, up = qjl_triton_fused_gate_up(
+                            z, packed["triton"]["gate"], packed["triton"]["up"], x.dtype)
+                        self.assertTrue(torch.allclose(
+                            gate, packed["reference"]["gate"].forward_projected(z, x.dtype),
+                            atol=0.02, rtol=0.02))
+                        self.assertTrue(torch.allclose(
+                            up, packed["reference"]["up"].forward_projected(z, x.dtype),
+                            atol=0.02, rtol=0.02))
+                        for backend in ("triton_legacy", "triton"):
+                            self.assertTrue(torch.allclose(
+                                clusters[backend].forward_expert(0, x),
+                                clusters["reference"].forward_expert(0, x),
+                                atol=0.02, rtol=0.02))
+                            candidate = packed[backend]
+                            reference = packed["reference"]
+                            for projection in ("gate", "up"):
+                                self.assertTrue(torch.equal(candidate[projection].packed,
+                                                            reference[projection].packed))
+                                self.assertTrue(torch.equal(candidate[projection].norms,
+                                                            reference[projection].norms))
+                                self.assertTrue(torch.allclose(
+                                    candidate[projection].forward_projected(z, torch.float32),
+                                    reference[projection].forward_projected(z, torch.float32),
+                                    atol=1e-4, rtol=1e-4))
+                            gate_value = (clusters[backend].bases["gate"](x)
+                                          + candidate["gate"].forward_projected(z, x.dtype))
+                            up_value = (clusters[backend].bases["up"](x)
+                                        + candidate["up"].forward_projected(z, x.dtype))
+                            reference_gate = (clusters["reference"].bases["gate"](x)
+                                              + reference["gate"].forward_projected(z, x.dtype))
+                            reference_up = (clusters["reference"].bases["up"](x)
+                                            + reference["up"].forward_projected(z, x.dtype))
+                            self.assertTrue(torch.allclose(gate_value, reference_gate,
+                                                           atol=0.02, rtol=0.02))
+                            self.assertTrue(torch.allclose(up_value, reference_up,
+                                                           atol=0.02, rtol=0.02))
+                            middle = F.silu(gate_value) * up_value
+                            reference_middle = F.silu(reference_gate) * reference_up
+                            self.assertTrue(torch.allclose(middle, reference_middle,
+                                                           atol=0.02, rtol=0.02))
+                            self.assertTrue(torch.allclose(
+                                candidate["down"](reference_middle),
+                                reference["down"](reference_middle),
+                                atol=0.02, rtol=0.02))
 
 
 if __name__ == "__main__":

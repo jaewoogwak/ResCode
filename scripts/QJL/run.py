@@ -40,7 +40,7 @@ def arguments():
     p.add_argument("--residual-mode", choices=("qjl", "exact"), default="qjl")
     p.add_argument("--qjl-d", type=int, default=8192)
     p.add_argument("--targets", choices=("gate", "up", "down", "gate_up", "gate_up_down"), default="gate_up_down")
-    p.add_argument("--backend", choices=("triton", "reference"), default="triton")
+    p.add_argument("--backend", choices=("triton", "triton_legacy", "reference"), default="triton")
     p.add_argument("--projection-seed", type=int, default=0)
     p.add_argument("--calib-seed", type=int, default=42)
     p.add_argument("--num-groups", type=int, default=None)
