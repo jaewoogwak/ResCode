@@ -160,7 +160,7 @@ def write_summary(root, rows):
     path = root / "sweep_summary.csv"
     tmp = path.with_name(path.name + f".tmp{os.getpid()}")
     with open(tmp, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(f, fieldnames=list(rows[0]), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
     os.replace(tmp, path)
