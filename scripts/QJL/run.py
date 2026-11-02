@@ -24,6 +24,7 @@ from rescode.merging.eval_summary import report_eval_summary
 from rescode.qjl.calibration import ProjectionSampleCollector, collect_projection_samples
 from rescode.qjl.core import parse_targets
 from rescode.qjl.model import convert_model, load_qjl_checkpoint, save_qjl_checkpoint
+from rescode.qjl.scale_diagnostics import summarize_records
 
 
 TASKS = "winogrande,arc_challenge,arc_easy,boolq,hellaswag,mmlu,openbookqa,rte"
@@ -69,6 +70,12 @@ def arguments():
     p.add_argument("--eval-batch-size", type=int, default=16)
     p.add_argument("--gpu-memory-fraction", type=float, default=0.94,
                    help="Fraction of each GPU offered to transformers device_map=auto")
+    p.add_argument("--residual-scale-alpha", type=float, default=None,
+                   help="Experimental expert-specific BF16 base interpolation in [0, 1]")
+    p.add_argument("--scale-cache", default=None,
+                   help="Shared groups, routed samples, and fitted BF16 bases for the alpha sweep")
+    p.add_argument("--diagnostic-samples", type=int, default=32,
+                   help="Maximum routed samples per expert and split for compression-time diagnostics")
     return p.parse_args()
 
 
@@ -119,7 +126,11 @@ def grouping(model, loader, args, shared_root):
     groups_path = Path(args.groups_path or shared_root / f"groups-{name}.pt")
     if groups_path.is_file():
         saved = torch.load(groups_path, map_location="cpu", weights_only=False)
-        if saved["key"] != key:
+        # An explicit group file pins the expert partition even if the same
+        # Wikipedia JSONL was copied to a new server with a new mtime.
+        ignored = ("train_data_path", "train_data_bytes", "train_data_mtime_ns",
+                   "n_sentences") if args.groups_path else ()
+        if any(saved["key"].get(k) != v for k, v in key.items() if k not in ignored):
             raise ValueError("groups-path configuration mismatch")
         print(f"[QJL] reused groups: {groups_path}", flush=True)
         return saved["groups"], saved["saliency"], saved["summary"], groups_path, None
@@ -183,6 +194,44 @@ def launch_rescode(args):
     subprocess.run(["bash", "scripts/RESCODE/run.sh"], cwd=ROOT, env=env, check=True)
 
 
+def scale_cache_key(args):
+    if not args.groups_path:
+        raise ValueError("--groups-path is required for residual-scale sweep")
+    group_file = Path(args.groups_path)
+    if not group_file.is_file():
+        raise FileNotFoundError(group_file)
+    dataset = Path(args.train_data_path)
+    if not dataset.is_file():
+        raise FileNotFoundError(dataset)
+    return {
+        "group_sha256": hashlib.sha256(group_file.read_bytes()).hexdigest(),
+        "dataset_sha256": file_sha256(dataset),
+        "model_name": args.model_name, "model": args.model,
+        "base_method": args.base_method, "qjl_d": args.qjl_d,
+        "projection_seed": args.projection_seed, "calib_seed": args.calib_seed,
+        "n_sentences": args.n_sentences, "calib_seqlen": args.calib_seqlen,
+        "max_train_per_expert": args.max_train_per_expert,
+        "max_heldout_per_expert": args.max_heldout_per_expert,
+        "layers": args.layers,
+        "delta": args.delta, "cg_iterations": args.cg_iterations,
+    }
+
+
+def file_sha256(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as source:
+        for chunk in iter(lambda: source.read(4 * 1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def save_scale_cache(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + f".tmp{os.getpid()}")
+    torch.save(value, tmp)
+    os.replace(tmp, path)
+
+
 def main():
     args = arguments()
     os.chdir(ROOT)
@@ -191,6 +240,13 @@ def main():
     args.num_groups = args.num_groups or (30 if args.model == "qwen" else 4)
     if args.qjl_d < 1 or args.n_sentences < 1:
         raise ValueError("qjl-d and n-sentences must be positive")
+    if args.residual_scale_alpha is not None:
+        if args.mode != "compress" or not 0 <= args.residual_scale_alpha <= 1:
+            raise ValueError("residual-scale-alpha requires compress mode and a value in [0, 1]")
+        if args.residual_mode != "qjl" or args.targets != "gate_up_down":
+            raise ValueError("residual-scale experiment requires QJL on gate_up_down")
+        if not args.scale_cache or args.diagnostic_samples < 0:
+            raise ValueError("--scale-cache required and --diagnostic-samples must be nonnegative")
     if not 0.1 <= args.gpu_memory_fraction <= 0.98:
         raise ValueError("gpu-memory-fraction must be between 0.1 and 0.98")
     default_name = (f"{args.base_method}_d{args.qjl_d}" if args.mode == "compress"
@@ -220,7 +276,9 @@ def main():
     )
     model.eval()
     tokenizer = AutoTokenizer.from_pretrained(args.model_name, trust_remote_code=True)
+    model_load_seconds = time.perf_counter() - start
     metrics = {"model_name": args.model_name, "mode": args.mode}
+    metrics["model_load_seconds"] = model_load_seconds
     metrics["environment"] = {
         "torch": torch.__version__,
         "transformers": importlib.metadata.version("transformers"),
@@ -240,14 +298,42 @@ def main():
         metrics["base_method"] = payload["config"]["base_method"]
         metrics["checkpoint_bytes"] = Path(args.checkpoint).stat().st_size
     elif args.mode == "compress":
+        calibration_start = time.perf_counter()
         checkpoint = Path(args.checkpoint or out / "qjl_state.pt")
         if checkpoint.exists() and not args.overwrite:
             raise FileExistsError(f"{checkpoint} already exists; pass --overwrite to replace")
-        loader = calibrator(tokenizer, args)
         shared_root = Path(f"results/qjl_direct/shared/{args.model}")
-        groups, saliency, group_summary, groups_path, samples = grouping(
-            model, loader, args, shared_root
-        )
+        cache_path = Path(args.scale_cache) if args.scale_cache else None
+        cache_key = scale_cache_key(args) if cache_path else None
+        cached = None
+        if cache_path and cache_path.is_file():
+            cached = torch.load(cache_path, map_location="cpu", weights_only=False)
+            if cached["key"] != cache_key:
+                raise ValueError("scale cache configuration mismatch")
+            print(f"[QJL] reused scale cache: {cache_path}", flush=True)
+            groups, saliency = cached["groups"], cached["saliency"]
+            group_summary, groups_path = cached["group_summary"], Path(args.groups_path)
+            train, heldout, probes = cached["train"], cached["heldout"], cached["probes"]
+            shared_bases = cached["shared_bases"]
+        else:
+            loader = calibrator(tokenizer, args)
+            groups, saliency, group_summary, groups_path, samples = grouping(
+                model, loader, args, shared_root
+            )
+            if args.layers != "all":
+                chosen = {int(x) for x in args.layers.split(",")}
+                groups = {i: v for i, v in groups.items() if i in chosen}
+            if samples is None:
+                train, heldout, probes = collect_projection_samples(
+                    model, loader, args.model, groups,
+                    max_train=args.max_train_per_expert,
+                    max_heldout=args.max_heldout_per_expert,
+                )
+            else:
+                train, heldout, probes = samples
+                print("[QJL] reused projection samples from grouping calibration", flush=True)
+            shared_bases = {} if cache_path else None
+        calibration_seconds = time.perf_counter() - calibration_start
         if args.layers != "all":
             chosen = {int(x) for x in args.layers.split(",")}
             unknown = chosen - set(groups)
@@ -265,20 +351,13 @@ def main():
                         "raise --gpu-memory-fraction or use more GPU memory "
                         "before compression"
                     )
-        if samples is None:
-            train, heldout, probes = collect_projection_samples(
-                model, loader, args.model, groups,
-                max_train=args.max_train_per_expert,
-                max_heldout=args.max_heldout_per_expert,
-            )
-        else:
-            train, heldout, probes = samples
-            print("[QJL] reused projection samples from grouping calibration", flush=True)
         config = {"base_method": args.base_method, "residual_mode": args.residual_mode,
                   "qjl_d": args.qjl_d, "targets": args.targets,
                   "backend": args.backend, "projection_seed": args.projection_seed,
                   "delta": args.delta, "cg_iterations": args.cg_iterations,
                   "model_name": args.model_name}
+        if args.residual_scale_alpha is not None:
+            config["residual_scale_alpha"] = args.residual_scale_alpha
         original_bytes = 0
         for layer_idx in groups:
             block = (model.model.layers[layer_idx].block_sparse_moe if args.model == "mixtral"
@@ -287,10 +366,39 @@ def main():
             weights = (expert.w1.weight, expert.w3.weight, expert.w2.weight) if args.model == "mixtral" else (
                 expert.gate_proj.weight, expert.up_proj.weight, expert.down_proj.weight)
             original_bytes += len(block.experts) * sum(w.numel() * 2 for w in weights)
+        diagnostic_records = [] if args.residual_scale_alpha is not None else None
+        diagnostic_timer = [0.0]
+        conversion_start = time.perf_counter()
         diagnostics = convert_model(model, args.model, groups, saliency,
-                                    train, heldout, config, probes)
+                                    train, heldout, config, probes,
+                                    shared_cache=shared_bases,
+                                    diagnostic_records=diagnostic_records,
+                                    diagnostic_timer=diagnostic_timer,
+                                    diagnostic_samples=args.diagnostic_samples)
+        conversion_seconds = time.perf_counter() - conversion_start
+        if cache_path and cached is None:
+            save_scale_cache(cache_path, {
+                "key": cache_key, "groups": groups, "saliency": saliency,
+                "group_summary": group_summary, "train": train,
+                "heldout": heldout, "probes": probes,
+                "shared_bases": shared_bases,
+            })
+        if diagnostic_records is not None:
+            diagnostic_summary = summarize_records(diagnostic_records)
+            write_json(out / "diagnostics.json", {
+                "alpha": args.residual_scale_alpha,
+                "diagnostic_samples": args.diagnostic_samples,
+                "records": diagnostic_records, "summary": diagnostic_summary,
+            })
+            metrics["diagnostic_summary"] = diagnostic_summary
+            metrics["diagnostics_seconds"] = diagnostic_timer[0]
+        metrics["calibration_or_cache_seconds"] = calibration_seconds
+        metrics["conversion_seconds"] = conversion_seconds
+        metrics["compression_seconds"] = conversion_seconds - diagnostic_timer[0]
+        checkpoint_start = time.perf_counter()
         sizes = save_qjl_checkpoint(model, args.model, groups, config,
                                     str(checkpoint), diagnostics)
+        metrics["checkpoint_save_seconds"] = time.perf_counter() - checkpoint_start
         metrics.update(sizes)
         metrics.update({"original_expert_bf16_bytes": original_bytes,
                         "expert_checkpoint_compression_ratio":

@@ -188,3 +188,6 @@ the unmodified backbone, which is loaded from the original model. The group
 file and calibration statistics live under `results/qjl_direct/shared/` and
 are reused for matching configurations. Existing ResCode results are not
 replaced unless explicitly requested with `--overwrite`.
+
+For the expert-specific BF16 base / QJL residual alpha sweep, see
+[`RESIDUAL_SCALE_SWEEP.md`](RESIDUAL_SCALE_SWEEP.md).
