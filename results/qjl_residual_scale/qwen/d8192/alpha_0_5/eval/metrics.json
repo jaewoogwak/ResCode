@@ -1,0 +1,68 @@
+{
+  "model_name": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+  "mode": "eval",
+  "model_load_seconds": 24.68844042904675,
+  "environment": {
+    "torch": "2.8.0+cu128",
+    "transformers": "4.40.1",
+    "triton": "3.4.0",
+    "lm_eval": "0.4.2",
+    "gpu_names": [
+      "NVIDIA RTX PRO 6000 Blackwell Workstation Edition"
+    ],
+    "model_config_commit": "ec052fda178e241c7c443468d2fa1db6618996be"
+  },
+  "hf_device_map": {
+    "": "0"
+  },
+  "checkpoint": "/home/jaewoo/ResCode/results/qjl_residual_scale/qwen/d8192/alpha_0_5/qjl_state.pt",
+  "base_method": "qjl_aware",
+  "checkpoint_bytes": 29072534297,
+  "pre_eval_seconds": 38.301420581992716,
+  "compression_or_load_peak_bytes": {
+    "0": 34161119232
+  },
+  "inference_forward_median_ms": 93.72434695251286,
+  "gpu_peak_allocated_bytes": {
+    "0": 33668087296
+  },
+  "gpu_resident_allocated_bytes": {
+    "0": 33664750080
+  },
+  "projection_gpu_resident_bytes": 56623104,
+  "projection_cpu_resident_bytes": 0,
+  "task_summary": {
+    "tasks": [
+      [
+        "arc_challenge",
+        0.3703071672354949,
+        0.39078498293515357
+      ],
+      [
+        "arc_easy",
+        0.6919191919191919,
+        0.6544612794612794
+      ]
+    ],
+    "avg": 0.5311131795773434,
+    "avg_norm_strict": 0.5226231311982165,
+    "avg_norm": 0.5226231311982165,
+    "avg_norm_uses_fallback": []
+  },
+  "task_results": {
+    "arc_easy": {
+      "acc,none": 0.6919191919191919,
+      "acc_stderr,none": 0.00947388707582633,
+      "acc_norm,none": 0.6544612794612794,
+      "acc_norm_stderr,none": 0.009757948730670294
+    },
+    "arc_challenge": {
+      "acc,none": 0.3703071672354949,
+      "acc_stderr,none": 0.01411129875167495,
+      "acc_norm,none": 0.39078498293515357,
+      "acc_norm_stderr,none": 0.01425856388051378
+    }
+  },
+  "eval_limit": 0,
+  "eval_seconds": 561.2941798600368
+}

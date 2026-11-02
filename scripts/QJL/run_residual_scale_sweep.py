@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_GROUPS = "results/qjl_direct/shared/qwen/groups-0c0fb7aea36af7a8.pt"
-TASKS = "winogrande,arc_challenge,arc_easy,boolq,hellaswag,mmlu,openbookqa,rte"
+TASKS = "arc_challenge,arc_easy"
 
 
 def arguments():

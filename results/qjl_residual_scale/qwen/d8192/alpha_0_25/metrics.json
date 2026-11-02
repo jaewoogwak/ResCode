@@ -1,7 +1,7 @@
 {
   "model_name": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
   "mode": "compress",
-  "model_load_seconds": 25.135406120913103,
+  "model_load_seconds": 25.18653013696894,
   "environment": {
     "torch": "2.8.0+cu128",
     "transformers": "4.40.1",
@@ -6407,11 +6407,11 @@
       "max": 0.016473017632961273
     }
   },
-  "diagnostics_seconds": 5.754835286643356,
-  "calibration_or_cache_seconds": 1.6385400400031358,
-  "conversion_seconds": 9.981628771172836,
-  "compression_seconds": 4.22679348452948,
-  "checkpoint_save_seconds": 23.097805737983435,
+  "diagnostics_seconds": 5.700031060958281,
+  "calibration_or_cache_seconds": 1.7460990590043366,
+  "conversion_seconds": 9.809751458000392,
+  "compression_seconds": 4.109720397042111,
+  "checkpoint_save_seconds": 23.256270052166656,
   "checkpoint_bytes": 29072534297,
   "tensor_bytes": 29069545472,
   "metadata_and_zip_bytes": 2988825,
@@ -7200,15 +7200,15 @@
     }
   },
   "checkpoint": "/home/jaewoo/ResCode/results/qjl_residual_scale/qwen/d8192/alpha_0_25/qjl_state.pt",
-  "pre_eval_seconds": 59.99986299988814,
+  "pre_eval_seconds": 60.144537100801244,
   "compression_or_load_peak_bytes": {
-    "0": 34905997312
+    "0": 34921988096
   },
-  "inference_forward_median_ms": 90.86336684413254,
+  "inference_forward_median_ms": 103.03290095180273,
   "gpu_peak_allocated_bytes": {
-    "0": 34317549056
+    "0": 34334588416
   },
   "gpu_resident_allocated_bytes": {
-    "0": 34314211840
+    "0": 34331251200
   }
 }

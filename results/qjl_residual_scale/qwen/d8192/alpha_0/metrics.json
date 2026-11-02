@@ -1,7 +1,7 @@
 {
   "model_name": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
   "mode": "compress",
-  "model_load_seconds": 107.27492722403258,
+  "model_load_seconds": 26.339820076944306,
   "environment": {
     "torch": "2.8.0+cu128",
     "transformers": "4.40.1",
@@ -6761,18 +6761,18 @@
       "max": 0.0
     }
   },
-  "diagnostics_seconds": 5.790179213508964,
-  "calibration_or_cache_seconds": 111.55620140302926,
-  "conversion_seconds": 13.651990651153028,
-  "compression_seconds": 7.861811437644064,
-  "checkpoint_save_seconds": 21.947911554947495,
-  "checkpoint_bytes": 29072534233,
+  "diagnostics_seconds": 5.569430255098268,
+  "calibration_or_cache_seconds": 1.7343895640224218,
+  "conversion_seconds": 9.711726859910414,
+  "compression_seconds": 4.142296604812145,
+  "checkpoint_save_seconds": 23.07989299716428,
+  "checkpoint_bytes": 29072534297,
   "tensor_bytes": 29069545472,
-  "metadata_and_zip_bytes": 2988761,
+  "metadata_and_zip_bytes": 2988825,
   "projection_gpu_resident_bytes": 56623104,
   "projection_cpu_resident_bytes": 0,
   "original_expert_bf16_bytes": 24914165760,
-  "expert_checkpoint_compression_ratio": -0.16690779506959497,
+  "expert_checkpoint_compression_ratio": -0.1669077976384148,
   "groups_path": "results/qjl_direct/shared/qwen/groups-0c0fb7aea36af7a8.pt",
   "grouping_rescode_parameter_estimate": {
     "budget_params": 6228541440,
@@ -7554,15 +7554,15 @@
     }
   },
   "checkpoint": "/home/jaewoo/ResCode/results/qjl_residual_scale/qwen/d8192/alpha_0/qjl_state.pt",
-  "pre_eval_seconds": 255.89174198103137,
+  "pre_eval_seconds": 61.00063640996814,
   "compression_or_load_peak_bytes": {
-    "0": 34803367936
+    "0": 34921988096
   },
-  "inference_forward_median_ms": 92.53409504890442,
+  "inference_forward_median_ms": 93.54194300249219,
   "gpu_peak_allocated_bytes": {
-    "0": 34216242176
+    "0": 34334588416
   },
   "gpu_resident_allocated_bytes": {
-    "0": 34212631040
+    "0": 34331251200
   }
 }
