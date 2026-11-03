@@ -1,0 +1,44 @@
+{
+  "model_load_seconds": 39.370116182020865,
+  "model_name": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+  "mode": "original",
+  "compression_or_load_peak_bytes": 29054156800,
+  "inference_forward_median_ms": 287.0158680016175,
+  "inference_cuda_event_median_ms": 287.00689697265625,
+  "gpu_peak_allocated_bytes": 29066014208,
+  "gpu_resident_allocated_bytes": 29062676992,
+  "task_summary": {
+    "tasks": [
+      [
+        "arc_easy",
+        0.7058080808080808,
+        0.6843434343434344
+      ],
+      [
+        "arc_challenge",
+        0.39761092150170646,
+        0.40017064846416384
+      ]
+    ],
+    "avg": 0.5517095011548936,
+    "avg_norm_strict": 0.542257041403799,
+    "avg_norm": 0.542257041403799,
+    "avg_norm_uses_fallback": []
+  },
+  "task_results": {
+    "arc_challenge": {
+      "acc,none": 0.39761092150170646,
+      "acc_stderr,none": 0.014301752223279535,
+      "acc_norm,none": 0.40017064846416384,
+      "acc_norm_stderr,none": 0.014317197787809176
+    },
+    "arc_easy": {
+      "acc,none": 0.7058080808080808,
+      "acc_stderr,none": 0.009350328648861737,
+      "acc_norm,none": 0.6843434343434344,
+      "acc_norm_stderr,none": 0.009537019245566075
+    }
+  },
+  "eval_limit": 0,
+  "eval_seconds": 366.8878292470181
+}

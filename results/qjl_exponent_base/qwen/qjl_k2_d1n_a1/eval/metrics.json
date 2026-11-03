@@ -1,0 +1,90 @@
+{
+  "model_load_seconds": 39.048771295987535,
+  "model_name": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+  "mode": "eval",
+  "checkpoint_load_seconds": 67.48527069899137,
+  "checkpoint": "results/qjl_exponent_base/qwen/qjl_k2_d1n_a1/compact_qjl_state.pt",
+  "checkpoint_bytes": 11601063497,
+  "checkpoint_config": {
+    "format": "rescode-exponent-base-qjl-v1",
+    "model_name": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+    "k": 2,
+    "d_factor": 1,
+    "alpha": "1",
+    "backend": "triton",
+    "projection_seed": 0,
+    "calib_seed": 42,
+    "layers": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+    ],
+    "diagnostic_samples": 16,
+    "sample_cache": "results/qjl_exponent_base/qwen/shared/routed_samples.pt",
+    "train_data_path": "rescode/data/wikipedia-calib.jsonl"
+  },
+  "base_gpu_resident_bytes": 17128488960,
+  "qjl_gpu_resident_bytes": 1585152000,
+  "exponent_restore_seconds": 52.43627400090918,
+  "projection_gpu_resident_bytes": 0,
+  "compression_or_load_peak_bytes": 30001008640,
+  "inference_forward_median_ms": 247.346866002772,
+  "inference_cuda_event_median_ms": 247.33827209472656,
+  "gpu_peak_allocated_bytes": 24082361856,
+  "gpu_resident_allocated_bytes": 24079024640,
+  "task_summary": {
+    "tasks": [
+      [
+        "arc_easy",
+        0.6877104377104377,
+        0.6675084175084175
+      ],
+      [
+        "arc_challenge",
+        0.386518771331058,
+        0.40784982935153585
+      ]
+    ],
+    "avg": 0.5371146045207479,
+    "avg_norm_strict": 0.5376791234299767,
+    "avg_norm": 0.5376791234299767,
+    "avg_norm_uses_fallback": []
+  },
+  "task_results": {
+    "arc_challenge": {
+      "acc,none": 0.386518771331058,
+      "acc_stderr,none": 0.014230084761910473,
+      "acc_norm,none": 0.40784982935153585,
+      "acc_norm_stderr,none": 0.014361097288449701
+    },
+    "arc_easy": {
+      "acc,none": 0.6877104377104377,
+      "acc_stderr,none": 0.009509325983631451,
+      "acc_norm,none": 0.6675084175084175,
+      "acc_norm_stderr,none": 0.009666892606130115
+    }
+  },
+  "eval_limit": 0,
+  "eval_seconds": 1509.8208851230156
+}

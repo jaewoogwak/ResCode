@@ -1,0 +1,59 @@
+{
+  "model_load_seconds": 90.18387772201095,
+  "model_name": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+  "mode": "compress",
+  "calibration_seconds": 169.14954586999374,
+  "compression_and_diagnostics_seconds": 443.0712197710236,
+  "diagnostics_seconds": 15.616224616504041,
+  "checkpoint_bytes": 8452398333,
+  "base_encoded_bytes": 8447426879,
+  "qjl_tensor_bytes": 0,
+  "metadata_bytes": 4971454,
+  "original_routed_bf16_bytes": 24914165760,
+  "checkpoint_ratio_vs_original_routed": 0.3392607408340531,
+  "diagnostic_summary": {
+    "gate": {
+      "count": 1440,
+      "mean_relative_l2": 0.08115478687238913,
+      "mean_mse": 0.007879480459147695
+    },
+    "up": {
+      "count": 1440,
+      "mean_relative_l2": 0.0902969880338707,
+      "mean_mse": 0.008181214494632312
+    },
+    "down": {
+      "count": 1440,
+      "mean_relative_l2": 0.1002581544563363,
+      "mean_mse": 0.002462698889671502
+    },
+    "expert_output": {
+      "count": 1440,
+      "mean_relative_l2": 0.15523525528231608,
+      "mean_mse": 0.006059535361771395
+    },
+    "moe_output": {
+      "count": 24,
+      "mean_relative_l2": 0.08622139269113632,
+      "mean_mse": 0.001895466296067146
+    },
+    "residual_norm_ratio": 0.10391977601025738,
+    "exponent_entropy_bits": 2.5503603595474265,
+    "base_stored_bytes": 8447426879,
+    "base_stored_bits_per_weight": 5.4249791610923275,
+    "base_gpu_resident_bytes": 15571353600,
+    "mean_alpha": 0.0,
+    "max_decomposition_relative_l2": 0.0
+  },
+  "checkpoint": "results/qjl_exponent_base/qwen/base_k1/compact_qjl_state.pt",
+  "reload_probe_max_abs_error": 0.0,
+  "base_gpu_resident_bytes": 15571353600,
+  "qjl_gpu_resident_bytes": 0,
+  "exponent_restore_seconds": 52.41515345784137,
+  "projection_gpu_resident_bytes": 0,
+  "compression_or_load_peak_bytes": 31342313472,
+  "inference_forward_median_ms": 132.81607700628228,
+  "inference_cuda_event_median_ms": 132.8065643310547,
+  "gpu_peak_allocated_bytes": 20212112384,
+  "gpu_resident_allocated_bytes": 20207976960
+}

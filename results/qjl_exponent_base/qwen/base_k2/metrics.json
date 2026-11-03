@@ -1,0 +1,59 @@
+{
+  "model_load_seconds": 39.796938715997385,
+  "model_name": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+  "mode": "compress",
+  "calibration_seconds": 0.49563176400261,
+  "compression_and_diagnostics_seconds": 466.121446242003,
+  "diagnostics_seconds": 14.785976441024104,
+  "checkpoint_bytes": 10013319069,
+  "base_encoded_bytes": 10008281409,
+  "qjl_tensor_bytes": 0,
+  "metadata_bytes": 5037660,
+  "original_routed_bf16_bytes": 24914165760,
+  "checkpoint_ratio_vs_original_routed": 0.40191267752888227,
+  "diagnostic_summary": {
+    "gate": {
+      "count": 1440,
+      "mean_relative_l2": 0.04124525344747076,
+      "mean_mse": 0.0020359210259913297
+    },
+    "up": {
+      "count": 1440,
+      "mean_relative_l2": 0.04594750882051941,
+      "mean_mse": 0.0021164629074923546
+    },
+    "down": {
+      "count": 1440,
+      "mean_relative_l2": 0.05108185192910947,
+      "mean_mse": 0.0006283703214547939
+    },
+    "expert_output": {
+      "count": 1440,
+      "mean_relative_l2": 0.07913383028720287,
+      "mean_mse": 0.0015633011797834544
+    },
+    "moe_output": {
+      "count": 24,
+      "mean_relative_l2": 0.0445705990492688,
+      "mean_mse": 0.00046715909843442205
+    },
+    "residual_norm_ratio": 0.05291897707651403,
+    "exponent_entropy_bits": 2.5511496792391797,
+    "base_stored_bytes": 10008281409,
+    "base_stored_bits_per_weight": 6.427367630390206,
+    "base_gpu_resident_bytes": 17128488960,
+    "mean_alpha": 0.0,
+    "max_decomposition_relative_l2": 0.0
+  },
+  "checkpoint": "results/qjl_exponent_base/qwen/base_k2/compact_qjl_state.pt",
+  "reload_probe_max_abs_error": 0.0,
+  "base_gpu_resident_bytes": 17128488960,
+  "qjl_gpu_resident_bytes": 0,
+  "exponent_restore_seconds": 52.628730928641744,
+  "projection_gpu_resident_bytes": 0,
+  "compression_or_load_peak_bytes": 30141425664,
+  "inference_forward_median_ms": 132.15957800275646,
+  "inference_cuda_event_median_ms": 132.15122985839844,
+  "gpu_peak_allocated_bytes": 22310301184,
+  "gpu_resident_allocated_bytes": 22306963968
+}

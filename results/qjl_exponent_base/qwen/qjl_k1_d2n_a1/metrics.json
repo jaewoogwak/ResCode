@@ -1,0 +1,59 @@
+{
+  "model_load_seconds": 39.806962246017065,
+  "model_name": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+  "mode": "compress",
+  "calibration_seconds": 0.47605330400983803,
+  "compression_and_diagnostics_seconds": 89.63912377998349,
+  "diagnostics_seconds": 26.443493735219818,
+  "checkpoint_bytes": 11597347749,
+  "base_encoded_bytes": 8447426879,
+  "qjl_tensor_bytes": 3142287360,
+  "metadata_bytes": 7633510,
+  "original_routed_bf16_bytes": 24914165760,
+  "checkpoint_ratio_vs_original_routed": 0.46549211644163035,
+  "diagnostic_summary": {
+    "gate": {
+      "count": 1440,
+      "mean_relative_l2": 0.07385099660317518,
+      "mean_mse": 0.006484632295804558
+    },
+    "up": {
+      "count": 1440,
+      "mean_relative_l2": 0.08328826602087835,
+      "mean_mse": 0.006856477248018362
+    },
+    "down": {
+      "count": 1440,
+      "mean_relative_l2": 0.08899326451353425,
+      "mean_mse": 0.0019297429092868393
+    },
+    "expert_output": {
+      "count": 1440,
+      "mean_relative_l2": 0.14099464704755935,
+      "mean_mse": 0.004968415414513553
+    },
+    "moe_output": {
+      "count": 24,
+      "mean_relative_l2": 0.08421132659810404,
+      "mean_mse": 0.001311576607956037
+    },
+    "residual_norm_ratio": 0.10391977601025738,
+    "exponent_entropy_bits": 2.5503603595474265,
+    "base_stored_bytes": 8447426879,
+    "base_stored_bits_per_weight": 5.4249791610923275,
+    "base_gpu_resident_bytes": 15571353600,
+    "mean_alpha": 1.0,
+    "max_decomposition_relative_l2": 0.0
+  },
+  "checkpoint": "results/qjl_exponent_base/qwen/qjl_k1_d2n_a1/compact_qjl_state.pt",
+  "reload_probe_max_abs_error": 0.0,
+  "base_gpu_resident_bytes": 15571353600,
+  "qjl_gpu_resident_bytes": 3142287360,
+  "exponent_restore_seconds": 53.272236388525926,
+  "projection_gpu_resident_bytes": 24707072,
+  "compression_or_load_peak_bytes": 30202681344,
+  "inference_forward_median_ms": 263.39053400442936,
+  "inference_cuda_event_median_ms": 263.38116455078125,
+  "gpu_peak_allocated_bytes": 23380471296,
+  "gpu_resident_allocated_bytes": 23377134080
+}

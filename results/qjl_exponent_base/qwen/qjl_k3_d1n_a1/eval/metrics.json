@@ -1,0 +1,90 @@
+{
+  "model_load_seconds": 39.61811440100428,
+  "model_name": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+  "mode": "eval",
+  "checkpoint_load_seconds": 68.87807624199195,
+  "checkpoint": "results/qjl_exponent_base/qwen/qjl_k3_d1n_a1/compact_qjl_state.pt",
+  "checkpoint_bytes": 13160090273,
+  "checkpoint_config": {
+    "format": "rescode-exponent-base-qjl-v1",
+    "model_name": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+    "k": 3,
+    "d_factor": 1,
+    "alpha": "1",
+    "backend": "triton",
+    "projection_seed": 0,
+    "calib_seed": 42,
+    "layers": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+    ],
+    "diagnostic_samples": 16,
+    "sample_cache": "results/qjl_exponent_base/qwen/shared/routed_samples.pt",
+    "train_data_path": "rescode/data/wikipedia-calib.jsonl"
+  },
+  "base_gpu_resident_bytes": 18685624320,
+  "qjl_gpu_resident_bytes": 1585152000,
+  "exponent_restore_seconds": 52.50989119094447,
+  "projection_gpu_resident_bytes": 0,
+  "compression_or_load_peak_bytes": 30167695360,
+  "inference_forward_median_ms": 248.97037399932742,
+  "inference_cuda_event_median_ms": 248.96234130859375,
+  "gpu_peak_allocated_bytes": 25397145088,
+  "gpu_resident_allocated_bytes": 25393807872,
+  "task_summary": {
+    "tasks": [
+      [
+        "arc_easy",
+        0.6982323232323232,
+        0.6776094276094277
+      ],
+      [
+        "arc_challenge",
+        0.40273037542662116,
+        0.3993174061433447
+      ]
+    ],
+    "avg": 0.5504813493294722,
+    "avg_norm_strict": 0.5384634168763862,
+    "avg_norm": 0.5384634168763862,
+    "avg_norm_uses_fallback": []
+  },
+  "task_results": {
+    "arc_challenge": {
+      "acc,none": 0.40273037542662116,
+      "acc_stderr,none": 0.01433223630679014,
+      "acc_norm,none": 0.3993174061433447,
+      "acc_norm_stderr,none": 0.014312094557946705
+    },
+    "arc_easy": {
+      "acc,none": 0.6982323232323232,
+      "acc_stderr,none": 0.009418994158522535,
+      "acc_norm,none": 0.6776094276094277,
+      "acc_norm_stderr,none": 0.009590672908157436
+    }
+  },
+  "eval_limit": 0,
+  "eval_seconds": 1517.3336890839855
+}

@@ -1,0 +1,59 @@
+{
+  "model_load_seconds": 39.45672385499347,
+  "model_name": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+  "mode": "compress",
+  "calibration_seconds": 0.49715492699760944,
+  "compression_and_diagnostics_seconds": 474.8189326240099,
+  "diagnostics_seconds": 20.893190173926996,
+  "checkpoint_bytes": 13130375709,
+  "base_encoded_bytes": 13125250570,
+  "qjl_tensor_bytes": 0,
+  "metadata_bytes": 5125139,
+  "original_routed_bf16_bytes": 24914165760,
+  "checkpoint_ratio_vs_original_routed": 0.5270244982507494,
+  "diagnostic_summary": {
+    "gate": {
+      "count": 1440,
+      "mean_relative_l2": 0.010794719005045342,
+      "mean_mse": 0.00013905941264719484
+    },
+    "up": {
+      "count": 1440,
+      "mean_relative_l2": 0.011980254979779831,
+      "mean_mse": 0.00014376601237921073
+    },
+    "down": {
+      "count": 1440,
+      "mean_relative_l2": 0.01327079423892887,
+      "mean_mse": 4.318178951508619e-05
+    },
+    "expert_output": {
+      "count": 1440,
+      "mean_relative_l2": 0.020808062555424164,
+      "mean_mse": 0.00010871836663440209
+    },
+    "moe_output": {
+      "count": 24,
+      "mean_relative_l2": 0.011539162104535497,
+      "mean_mse": 2.865192620937762e-05
+    },
+    "residual_norm_ratio": 0.013549079387154604,
+    "exponent_entropy_bits": 2.5513296871984377,
+    "base_stored_bytes": 13125250570,
+    "base_stored_bits_per_weight": 8.429100582495282,
+    "base_gpu_resident_bytes": 20242759680,
+    "mean_alpha": 0.0,
+    "max_decomposition_relative_l2": 0.0
+  },
+  "checkpoint": "results/qjl_exponent_base/qwen/base_k4/compact_qjl_state.pt",
+  "reload_probe_max_abs_error": 0.0,
+  "base_gpu_resident_bytes": 20242759680,
+  "qjl_gpu_resident_bytes": 0,
+  "exponent_restore_seconds": 52.54998857251485,
+  "projection_gpu_resident_bytes": 0,
+  "compression_or_load_peak_bytes": 30251526144,
+  "inference_forward_median_ms": 130.29127797926776,
+  "inference_cuda_event_median_ms": 130.28115844726562,
+  "gpu_peak_allocated_bytes": 25124449792,
+  "gpu_resident_allocated_bytes": 25121112576
+}
