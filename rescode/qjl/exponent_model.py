@@ -10,6 +10,11 @@ import torch.nn.functional as F
 
 from .compact_base import (CompactBase, encode_base, encoded_bytes,
                            rounded_bf16_bits, storage_payload)
+from .packed_exponent import BLOCK_FORMAT
+
+
+CHECKPOINT_V1 = "rescode-exponent-base-qjl-v1"
+CHECKPOINT_V2 = "rescode-exponent-base-qjl-v2"
 from .core import PackedResidual, ProjectionBank, pack_residual, qjl_triton_fused_gate_up
 
 
@@ -243,7 +248,10 @@ def save_checkpoint(model, data, config, path):
             } for expert_id, expert in experts.items()
         } for layer, experts in data.items()
     }
-    payload = {"format": "rescode-exponent-base-qjl-v1", "config": config,
+    first_base = next(iter(next(iter(next(iter(data.values())).values())).values()))["base"]
+    checkpoint_format = (CHECKPOINT_V2 if first_base["format"] == BLOCK_FORMAT
+                         else CHECKPOINT_V1)
+    payload = {"format": checkpoint_format, "config": config,
                "layers": stored_data}
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     tmp = f"{path}.tmp{os.getpid()}"
@@ -262,7 +270,7 @@ def save_checkpoint(model, data, config, path):
 
 def load_checkpoint(model, path, backend=None):
     payload = torch.load(path, map_location="cpu", weights_only=False)
-    if payload.get("format") != "rescode-exponent-base-qjl-v1":
+    if payload.get("format") not in (CHECKPOINT_V1, CHECKPOINT_V2):
         raise ValueError("wrong checkpoint format")
     config = payload["config"]
     factor = config["d_factor"]
@@ -287,4 +295,8 @@ def load_checkpoint(model, path, backend=None):
                         base.shape[1], bank.d, bank, backend or config["backend"])
             experts.append(CompactExpert(bases, residuals, alphas))
         _install(block, experts)
+    if torch.cuda.is_available():
+        # The original routed BF16 experts have been replaced. Release their
+        # allocator cache so process-level VRAM reflects the packed runtime.
+        torch.cuda.empty_cache()
     return payload

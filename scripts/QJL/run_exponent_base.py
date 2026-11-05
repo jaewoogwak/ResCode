@@ -18,7 +18,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from rescode.evaluation import evaluate_fewshot, get_calib_dataloder
 from rescode.merging.eval_summary import report_eval_summary
 from rescode.qjl.calibration import collect_projection_samples
-from rescode.qjl.exponent_model import compress_model, load_checkpoint, save_checkpoint
+from rescode.qjl.exponent_model import (CHECKPOINT_V1, CHECKPOINT_V2,
+                                        compress_model, load_checkpoint, save_checkpoint)
 
 
 TASKS = "winogrande,arc_easy,arc_challenge,boolq,hellaswag,mmlu,openbookqa,rte"
@@ -222,7 +223,7 @@ def main():
         started = time.perf_counter()
         train, heldout, probes = _samples(model, tokenizer, args, layers)
         metrics["calibration_seconds"] = time.perf_counter() - started
-        config = {"format": "rescode-exponent-base-qjl-v1", "model_name": args.model_name,
+        config = {"format": CHECKPOINT_V2, "model_name": args.model_name,
                   "k": args.k, "d_factor": args.d_factor, "alpha": args.alpha,
                   "backend": args.backend, "projection_seed": args.projection_seed,
                   "calib_seed": args.calib_seed, "layers": layers,
@@ -233,7 +234,7 @@ def main():
         if args.base_checkpoint:
             source = torch.load(args.base_checkpoint, map_location="cpu", weights_only=False)
             source_config = source.get("config", {})
-            if (source.get("format") != "rescode-exponent-base-qjl-v1"
+            if (source.get("format") not in (CHECKPOINT_V1, CHECKPOINT_V2)
                     or source_config.get("d_factor") != 0
                     or source_config.get("k") != args.k
                     or source_config.get("layers") != layers

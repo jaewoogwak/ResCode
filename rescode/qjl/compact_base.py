@@ -1,9 +1,4 @@
-"""Lossless storage for a BF16 base with a rounded, short mantissa.
-
-The checkpoint stores zlib-coded exponents and packed sign/mantissa codes.
-At inference the exponent bytes (not BF16 weights) reside on the GPU; a BF16
-weight is reconstructed only for the duration of one linear projection.
-"""
+"""Lossless compact BF16 base storage with GPU-resident packed exponents."""
 
 import math
 import time
@@ -13,6 +8,20 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from .packed_exponent import BLOCK_FORMAT, decode_exponents, encode_exponents
+
+
+LEGACY_FORMAT = "bf16-rounded-sign-mantissa-zlib-exponent-v1"
+
+
+def _byte_keys(payload: dict) -> tuple[str, ...]:
+    if payload.get("format") == LEGACY_FORMAT:
+        return ("codes", "exponents", "special_indices", "special_bits")
+    if payload.get("format") == BLOCK_FORMAT:
+        return ("codes", "exp_data", "exp_offsets", "exp_modes",
+                "special_indices", "special_bits")
+    raise ValueError("unknown compact-base format")
 
 
 def rounded_bf16_bits(weight: torch.Tensor, k: int) -> torch.Tensor:
@@ -44,7 +53,8 @@ def _pack_codes(codes: np.ndarray, width: int) -> bytes:
     return np.packbits(bits, bitorder="little").tobytes()
 
 
-def encode_base(weight: torch.Tensor, k: int) -> dict:
+def encode_base(weight: torch.Tensor, k: int, *, legacy: bool = False,
+                block_size: int = 4096) -> dict:
     """Encode a BF16 base; special values retain their complete original bits."""
     rounded = rounded_bf16_bits(weight, k).cpu().contiguous()
     raw = rounded.numpy().astype(np.uint16, copy=False).reshape(-1)
@@ -53,25 +63,48 @@ def encode_base(weight: torch.Tensor, k: int) -> dict:
     probability = counts[counts > 0] / len(exponent)
     entropy = float(-np.sum(probability * np.log2(probability)))
     special = np.flatnonzero(exponent == 255).astype(np.int32)
-    return {
-        "format": "bf16-rounded-sign-mantissa-zlib-exponent-v1",
+    result = {
+        "format": LEGACY_FORMAT if legacy else BLOCK_FORMAT,
         "shape": tuple(weight.shape), "k": k,
         "codes": _pack_codes(_codes(rounded, k), k + 1),
-        "exponents": zlib.compress(exponent.tobytes(), level=1),
         "special_indices": special.tobytes(),
         "special_bits": raw[special].tobytes(),
         "exponent_entropy_bits": entropy,
     }
+    if legacy:
+        result["exponents"] = zlib.compress(exponent.tobytes(), level=1)
+    else:
+        result.update(encode_exponents(exponent, block_size))
+    return result
 
 
 def encoded_bytes(payload: dict) -> int:
-    return sum(len(payload[key]) for key in ("codes", "exponents", "special_indices", "special_bits"))
+    return sum(payload[key].numel() if isinstance(payload[key], torch.Tensor)
+               else len(payload[key]) for key in _byte_keys(payload))
+
+
+def convert_base_payload(payload: dict, block_size: int = 4096,
+                         widths: tuple[int, ...] = (3, 4, 5)) -> dict:
+    """Recode only the exponent stream; keep BF16 sign/mantissa and specials."""
+    payload = byte_payload(payload)
+    if payload["format"] == BLOCK_FORMAT:
+        return payload
+    if payload["format"] != LEGACY_FORMAT:
+        raise ValueError("unknown compact-base format")
+    count = math.prod(payload["shape"])
+    exponents = np.frombuffer(zlib.decompress(payload["exponents"]), dtype=np.uint8)
+    if len(exponents) != count:
+        raise ValueError("corrupt legacy exponent length")
+    result = {key: value for key, value in payload.items() if key != "exponents"}
+    result.update(encode_exponents(exponents, block_size, widths))
+    result["format"] = BLOCK_FORMAT
+    return result
 
 
 def storage_payload(payload: dict) -> dict:
     """Use raw uint8 tensor storages in torch.save instead of pickle byte strings."""
     result = dict(payload)
-    for key in ("codes", "exponents", "special_indices", "special_bits"):
+    for key in _byte_keys(payload):
         if not isinstance(result[key], torch.Tensor):
             result[key] = torch.from_numpy(
                 np.frombuffer(result[key], dtype=np.uint8).copy())
@@ -80,7 +113,7 @@ def storage_payload(payload: dict) -> dict:
 
 def byte_payload(payload: dict) -> dict:
     result = dict(payload)
-    for key in ("codes", "exponents", "special_indices", "special_bits"):
+    for key in _byte_keys(payload):
         if isinstance(result[key], torch.Tensor):
             result[key] = result[key].cpu().numpy().tobytes()
     return result
@@ -92,18 +125,35 @@ class CompactBase(nn.Module):
     def __init__(self, payload: dict, device):
         super().__init__()
         payload = byte_payload(payload)
-        if payload.get("format") != "bf16-rounded-sign-mantissa-zlib-exponent-v1":
-            raise ValueError("unknown compact-base format")
+        self.format = payload.get("format")
+        _byte_keys(payload)
         self.shape = tuple(payload["shape"])
         self.k = int(payload["k"])
         n = math.prod(self.shape)
         started = time.perf_counter()
-        exponents = np.frombuffer(zlib.decompress(payload["exponents"]), dtype=np.uint8).copy()
-        self.exponent_restore_seconds = time.perf_counter() - started
-        if len(exponents) != n or len(payload["codes"]) != (n * (self.k + 1) + 7) // 8:
+        if len(payload["codes"]) != (n * (self.k + 1) + 7) // 8:
             raise ValueError("corrupt compact base length")
         self.register_buffer("codes", torch.from_numpy(np.frombuffer(payload["codes"], dtype=np.uint8).copy()).to(device))
-        self.register_buffer("exponents", torch.from_numpy(exponents).to(device))
+        if self.format == LEGACY_FORMAT:
+            exponents = np.frombuffer(zlib.decompress(payload["exponents"]), dtype=np.uint8).copy()
+            if len(exponents) != n:
+                raise ValueError("corrupt legacy exponent length")
+            self.register_buffer("exponents", torch.from_numpy(exponents).to(device))
+        else:
+            # Index and dictionary bytes remain packed on GPU. No dense
+            # exponent or BF16 weight buffer is retained by this module.
+            offsets = np.frombuffer(payload["exp_offsets"], dtype=np.uint32)
+            modes = np.frombuffer(payload["exp_modes"], dtype=np.uint8)
+            if (len(offsets) != math.ceil(n / payload["exp_block_size"]) + 1
+                    or len(modes) != len(offsets) - 1
+                    or offsets[-1] != len(payload["exp_data"])):
+                raise ValueError("corrupt exponent block index")
+            self.exp_block_size = int(payload["exp_block_size"])
+            for name in ("exp_data", "exp_offsets", "exp_modes"):
+                self.register_buffer(name, torch.from_numpy(
+                    np.frombuffer(payload[name], dtype=np.uint8).copy()).to(device))
+            self.exp_offsets = self.exp_offsets.view(torch.int32)
+        self.exponent_restore_seconds = time.perf_counter() - started
         indices = np.frombuffer(payload["special_indices"], dtype=np.int32).copy()
         bits = np.frombuffer(payload["special_bits"], dtype=np.uint16).copy()
         if len(indices) != len(bits):
@@ -122,18 +172,30 @@ class CompactBase(nn.Module):
         code = ((low | (high << 8)) >> (bit_offset & 7).to(torch.int32)) & ((1 << width) - 1)
         sign = code >> self.k
         mantissa = code & ((1 << self.k) - 1)
-        bits = (sign << 15) | (self.exponents.to(torch.int32) << 7) | (mantissa << (7 - self.k))
+        if self.format == LEGACY_FORMAT:
+            exponents = self.exponents
+        else:
+            encoded = {"exp_data": self.exp_data.cpu().numpy().tobytes(),
+                       "exp_offsets": self.exp_offsets.cpu().numpy().tobytes(),
+                       "exp_modes": self.exp_modes.cpu().numpy().tobytes(),
+                       "exp_block_size": self.exp_block_size}
+            exponents = torch.from_numpy(decode_exponents(encoded, n)).to(self.codes.device)
+        bits = (sign << 15) | (exponents.to(torch.int32) << 7) | (mantissa << (7 - self.k))
         if self.special_indices.numel():
             bits.index_copy_(0, self.special_indices, self.special_bits)
         return bits.to(torch.uint16).view(torch.bfloat16).reshape(self.shape)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if x.is_cuda and x.dtype == torch.bfloat16 and not self.special_indices.numel():
+        if x.is_cuda and x.dtype == torch.bfloat16 and (
+                self.format == BLOCK_FORMAT or not self.special_indices.numel()):
             from .compact_base_kernel import compact_linear
             return compact_linear(x, self)
         # Exact portable path for special values and reference comparisons.
         return F.linear(x, self.decode())
 
     def gpu_resident_bytes(self) -> int:
-        return sum(t.numel() * t.element_size() for t in
-                   (self.codes, self.exponents, self.special_indices, self.special_bits))
+        names = ("codes", "special_indices", "special_bits")
+        names += (("exponents",) if self.format == LEGACY_FORMAT
+                  else ("exp_data", "exp_offsets", "exp_modes"))
+        return sum(getattr(self, name).numel() * getattr(self, name).element_size()
+                   for name in names)
