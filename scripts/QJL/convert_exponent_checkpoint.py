@@ -1,4 +1,4 @@
-"""Losslessly recode a v1 compact-base checkpoint for GPU-resident exponents.
+"""Losslessly recode v1/v2 compact-base checkpoints without recompressing QJL.
 
 QJL packed signs, FP32 row norms, fitted/fixed alpha, router, and all other
 checkpoint settings are reused verbatim. The source file is never modified.
@@ -20,7 +20,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from rescode.qjl.compact_base import (byte_payload, convert_base_payload,
-                                      encoded_bytes, storage_payload)
+                                      convert_base_payload_legacy, encoded_bytes,
+                                      storage_payload)
 from rescode.qjl.exponent_model import CHECKPOINT_V1, CHECKPOINT_V2
 from rescode.qjl.packed_exponent import decode_exponents, resident_bytes
 
@@ -32,8 +33,10 @@ def convert(source: Path, target: Path, block_size: int, widths: tuple[int, ...]
         raise FileNotFoundError(source)
     started = time.perf_counter()
     payload = torch.load(source, map_location="cpu", weights_only=False)
-    if payload.get("format") != CHECKPOINT_V1:
-        raise ValueError("source must be a v1 compact-base checkpoint")
+    source_format = payload.get("format")
+    if source_format not in (CHECKPOINT_V1, CHECKPOINT_V2):
+        raise ValueError("source must be a v1 or v2 compact-base checkpoint")
+    target_format = CHECKPOINT_V2 if source_format == CHECKPOINT_V1 else CHECKPOINT_V1
     old_base_bytes = new_base_bytes = exponent_gpu_bytes = count = 0
     mode_counts = {str(mode): 0 for mode in (0, 3, 4, 5)}
     for layer in payload["layers"].values():
@@ -42,9 +45,20 @@ def convert(source: Path, target: Path, block_size: int, widths: tuple[int, ...]
                 original = byte_payload(part["base"])
                 n = math.prod(original["shape"])
                 old_base_bytes += encoded_bytes(original)
-                converted = convert_base_payload(original, block_size, widths)
-                before = np.frombuffer(zlib.decompress(original["exponents"]), dtype=np.uint8)
-                after = decode_exponents(converted, n)
+                if source_format == CHECKPOINT_V1:
+                    converted = convert_base_payload(original, block_size, widths)
+                    before = np.frombuffer(zlib.decompress(original["exponents"]), dtype=np.uint8)
+                    after = decode_exponents(converted, n)
+                    exponent_gpu_bytes += resident_bytes(converted)
+                    for mode in np.frombuffer(converted["exp_modes"], dtype=np.uint8):
+                        mode_counts[str(int(mode))] += 1
+                else:
+                    converted = convert_base_payload_legacy(original)
+                    before = decode_exponents(original, n)
+                    after = np.frombuffer(zlib.decompress(converted["exponents"]), dtype=np.uint8)
+                    exponent_gpu_bytes += n
+                    for mode in np.frombuffer(original["exp_modes"], dtype=np.uint8):
+                        mode_counts[str(int(mode))] += 1
                 if not np.array_equal(before, after):
                     raise AssertionError("exponent conversion changed BF16 bits")
                 if (original["codes"] != converted["codes"]
@@ -52,13 +66,10 @@ def convert(source: Path, target: Path, block_size: int, widths: tuple[int, ...]
                         or original["special_bits"] != converted["special_bits"]):
                     raise AssertionError("conversion changed sign, mantissa or special bits")
                 new_base_bytes += encoded_bytes(converted)
-                exponent_gpu_bytes += resident_bytes(converted)
-                for mode in np.frombuffer(converted["exp_modes"], dtype=np.uint8):
-                    mode_counts[str(int(mode))] += 1
                 part["base"] = storage_payload(converted)
                 count += n
-    payload["format"] = CHECKPOINT_V2
-    payload["config"]["format"] = CHECKPOINT_V2
+    payload["format"] = target_format
+    payload["config"]["format"] = target_format
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp = target.with_name(target.name + f".tmp{os.getpid()}")
     try:
@@ -68,6 +79,7 @@ def convert(source: Path, target: Path, block_size: int, widths: tuple[int, ...]
         if tmp.exists():
             tmp.unlink()
     report = {"source": str(source), "target": str(target),
+              "source_format": source_format, "target_format": target_format,
               "source_checkpoint_bytes": source.stat().st_size,
               "target_checkpoint_bytes": target.stat().st_size,
               "weights": count, "source_base_bytes": old_base_bytes,

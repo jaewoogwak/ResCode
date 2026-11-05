@@ -9,12 +9,21 @@ export HF_HOME="${HF_HOME:-/workspace/.hf_home}"
 export PYTHONPATH="$REPO_ROOT${PYTHONPATH:+:$PYTHONPATH}"
 cd "$REPO_ROOT"
 
+# Generate the four v2 checkpoints once. The sweep checks configuration and
+# checkpoint completeness before reusing any existing compression result.
+"$PYTHON_BIN" scripts/QJL/run_exponent_base_sweep.py \
+  --output-root "$OUTPUT_ROOT/checkpoints" \
+  --only base_k2,base_k4,qjl_k2_d1n_a1,qjl_k2_d2n_a1 \
+  --task arc_easy,arc_challenge --skip-eval --resume
+
+# Legacy checkpoints were lost with the previous instance. Recreate the exact
+# v1 exponent stream from v2, retaining QJL packed signs, norms, and alpha.
 for method in base_k2 base_k4 qjl_k2_d1n_a1 qjl_k2_d2n_a1; do
-  while [[ ! -f "$OUTPUT_ROOT/source_checkpoints/$method/metrics.json" ||
-           ! -f "$OUTPUT_ROOT/checkpoints/$method/conversion_report.json" ]]; do
-    echo "[wait] compression and conversion: $method"
-    sleep 20
-  done
+  if [[ ! -f "$OUTPUT_ROOT/source_checkpoints/$method/conversion_report.json" ]]; then
+    "$PYTHON_BIN" scripts/QJL/convert_exponent_checkpoint.py \
+      --source "$OUTPUT_ROOT/checkpoints/$method/compact_qjl_state.pt" \
+      --output "$OUTPUT_ROOT/source_checkpoints/$method/compact_qjl_state.pt"
+  fi
 done
 
 "$PYTHON_BIN" scripts/QJL/compare_exponent_encodings.py --gpu-timing \

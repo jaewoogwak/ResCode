@@ -101,6 +101,22 @@ def convert_base_payload(payload: dict, block_size: int = 4096,
     return result
 
 
+def convert_base_payload_legacy(payload: dict) -> dict:
+    """Recode a v2 exponent stream as v1 without changing any BF16 base bit."""
+    payload = byte_payload(payload)
+    if payload["format"] == LEGACY_FORMAT:
+        return payload
+    if payload["format"] != BLOCK_FORMAT:
+        raise ValueError("unknown compact-base format")
+    count = math.prod(payload["shape"])
+    exponents = decode_exponents(payload, count)
+    result = {key: value for key, value in payload.items()
+              if key not in ("exp_data", "exp_offsets", "exp_modes", "exp_block_size")}
+    result["exponents"] = zlib.compress(exponents.tobytes(), level=1)
+    result["format"] = LEGACY_FORMAT
+    return result
+
+
 def storage_payload(payload: dict) -> dict:
     """Use raw uint8 tensor storages in torch.save instead of pickle byte strings."""
     result = dict(payload)

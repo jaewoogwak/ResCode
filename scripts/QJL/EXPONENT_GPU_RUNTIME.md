@@ -8,8 +8,9 @@ packed codes, block offsets, modes, palettes, and special-value table. A Triton
 kernel decodes only the weight tile needed for a linear operation and accumulates
 in FP32. There is no permanent dense exponent array or BF16 base weight on GPU.
 
-The old v1 checkpoint remains readable. Convert it without changing QJL signs,
-norms, alpha, projection seed, or any rounded BF16 base bit:
+The old v1 checkpoint remains readable. Conversion works in either direction
+without changing QJL signs, norms, alpha, projection seed, or any rounded BF16
+base bit:
 
 ```bash
 .venv/bin/python scripts/QJL/convert_exponent_checkpoint.py \
@@ -18,7 +19,9 @@ norms, alpha, projection seed, or any rounded BF16 base bit:
 ```
 
 The source is never overwritten. `conversion_report.json` records the exact
-bitwise check and actual GPU exponent bytes. New compression through
+bitwise check and actual GPU exponent bytes. A v2 source produces a v1 target,
+which allows same-checkpoint legacy comparisons when old v1 files are gone.
+New compression through
 `run_exponent_base.py` writes v2 directly. Use `--mode eval --checkpoint ...`
 to evaluate either format with the same evaluation path.
 
@@ -36,14 +39,14 @@ median and p95 latency, allocated resident and peak VRAM, and deterministic
 output traces. `summarize_exponent_optimized.py` compares the traces and joins
 benchmark and ARC-E/C evaluation results in `summary.csv/json` and `parity.json`.
 
-After preparing v1 and v2 checkpoints under the `optimized` result root, run
-the complete same-GPU validation and full ARC-E/C evaluation with:
+Run the complete same-GPU validation and full ARC-E/C evaluation with:
 
 ```bash
 PYTHON_BIN=.venv/bin/python bash scripts/QJL/run_optimized_validation.sh \
   results/qjl_exponent_base/optimized
 ```
 
-The runner waits for all four compression and conversion reports and skips
-finished benchmark/evaluation directories. It uses the exact same checkpoints
-for both runtime versions and never retrains a base or QJL residual.
+The runner compresses four v2 configurations with the existing sample cache,
+losslessly recodes each one to v1, then benchmarks and evaluates both formats.
+It skips verified compression and finished benchmark/evaluation directories. It
+never retrains a base or QJL residual between the v1 and v2 runtime comparisons.

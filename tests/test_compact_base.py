@@ -5,7 +5,7 @@ import torch
 import numpy as np
 
 from rescode.qjl.compact_base import (CompactBase, convert_base_payload,
-                                       encode_base, encoded_bytes,
+                                       convert_base_payload_legacy, encode_base, encoded_bytes,
                                        rounded_bf16_bits, storage_payload)
 from rescode.qjl.core import PackedResidual, ProjectionBank, pack_residual
 from rescode.qjl.exponent_model import fit_alpha
@@ -72,6 +72,12 @@ def test_v1_to_v2_base_bitwise_roundtrip(k):
                        CompactBase(old, "cpu").decode().view(torch.uint16))
     assert new["codes"] == old["codes"]
     assert new["special_bits"] == old["special_bits"]
+    restored = convert_base_payload_legacy(new)
+    assert restored["format"] == old["format"]
+    assert restored["codes"] == old["codes"]
+    assert restored["exponents"] == old["exponents"]
+    assert torch.equal(CompactBase(restored, "cpu").decode().view(torch.uint16),
+                       CompactBase(old, "cpu").decode().view(torch.uint16))
 
 
 def test_checkpoint_conversion_reuses_qjl_tensors(tmp_path):
@@ -98,6 +104,15 @@ def test_checkpoint_conversion_reuses_qjl_tensors(tmp_path):
     assert report["bitwise_base_verified"]
     with pytest.raises(FileExistsError):
         convert(source, target, 32, (3, 4, 5))
+    restored_path = tmp_path / "restored" / "compact_qjl_state.pt"
+    reverse = convert(target, restored_path, 32, (3, 4, 5))
+    restored = torch.load(restored_path, weights_only=False)
+    assert reverse["bitwise_base_verified"]
+    assert restored["format"] == "rescode-exponent-base-qjl-v1"
+    assert torch.equal(restored["layers"][0][0]["gate"]["packed"], packed)
+    assert torch.equal(CompactBase(restored["layers"][0][0]["gate"]["base"], "cpu")
+                       .decode().view(torch.uint16),
+                       CompactBase(old, "cpu").decode().view(torch.uint16))
 
 
 def test_calibrated_alpha_least_squares_and_zero_denominator():
