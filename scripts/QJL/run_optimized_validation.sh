@@ -9,6 +9,11 @@ export HF_HOME="${HF_HOME:-/workspace/.hf_home}"
 export PYTHONPATH="$REPO_ROOT${PYTHONPATH:+:$PYTHONPATH}"
 cd "$REPO_ROOT"
 
+if [[ ! -s rescode/data/wikipedia-calib.jsonl ]]; then
+  "$PYTHON_BIN" scripts/RESCODE/prepare_calib_datasets.py \
+    --dataset wikipedia --n_docs 40000
+fi
+
 # Generate the four v2 checkpoints once. The sweep checks configuration and
 # checkpoint completeness before reusing any existing compression result.
 "$PYTHON_BIN" scripts/QJL/run_exponent_base_sweep.py \

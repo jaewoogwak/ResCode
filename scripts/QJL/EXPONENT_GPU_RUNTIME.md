@@ -48,5 +48,7 @@ PYTHON_BIN=.venv/bin/python bash scripts/QJL/run_optimized_validation.sh \
 
 The runner compresses four v2 configurations with the existing sample cache,
 losslessly recodes each one to v1, then benchmarks and evaluates both formats.
+If the Wikipedia calibration JSONL is absent, it prepares 40000 documents
+using the repository's existing data helper first.
 It skips verified compression and finished benchmark/evaluation directories. It
 never retrains a base or QJL residual between the v1 and v2 runtime comparisons.
