@@ -52,3 +52,7 @@ If the Wikipedia calibration JSONL is absent, it prepares 40000 documents
 using the repository's existing data helper first.
 It skips verified compression and finished benchmark/evaluation directories. It
 never retrains a base or QJL residual between the v1 and v2 runtime comparisons.
+To keep disk usage bounded, it removes only v1 checkpoints created during that
+invocation after their benchmarks and evaluations finish. The v2 checkpoints,
+conversion reports, and evaluation results remain. Set
+`KEEP_GENERATED_LEGACY=1` to retain those derived v1 files as well.
