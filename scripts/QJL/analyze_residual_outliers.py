@@ -345,6 +345,120 @@ def write_report(path: Path, per_expert: pd.DataFrame, reductions: pd.DataFrame,
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def run_rowwise_analysis(args, model_path: Path, model_config: dict, index: dict,
+                         groups: dict, saliency: dict, layers: list[int]) -> None:
+    """Analyze original FP32 rows using the same cache and BF16 bases as above."""
+    from rowwise_outliers import (ROW_KS, analyze_rowwise_matrix, jaccard_indices,
+                                  plot_representative_rows, plot_rowwise_aggregates,
+                                  write_rowwise_report)
+
+    output = args.output_dir / "rowwise"
+    figure_dir = output / "figures"
+    figure_dir.mkdir(parents=True, exist_ok=True)
+    before_stat = args.groups_path.stat()
+    expert_rows, reduction_rows, overlap_rows = [], [], []
+    max_reconstruction_error = 0.0
+    for layer in layers:
+        print(f"[rowwise] layer {layer}", flush=True)
+        plotted = set()
+        with ExitStack() as stack:
+            shard_handles = {}
+
+            def original_tensor(expert: int, projection: str) -> torch.Tensor:
+                name = weight_name(layer, expert, projection)
+                shard = index["weight_map"][name]
+                if shard not in shard_handles:
+                    shard_handles[shard] = stack.enter_context(
+                        safe_open(str(model_path / shard), framework="pt", device="cpu"))
+                return shard_handles[shard].get_tensor(name)
+
+            for cid, members in enumerate(groups[layer]):
+                if len(members) == 1:
+                    continue
+                for pi, projection in enumerate(PROJECTIONS):
+                    weights = {expert: original_tensor(expert, projection) for expert in members}
+                    shape = ((model_config["moe_intermediate_size"], model_config["hidden_size"])
+                             if projection != "down" else
+                             (model_config["hidden_size"], model_config["moe_intermediate_size"]))
+                    if any(t.dtype != torch.bfloat16 or tuple(t.shape) != shape for t in weights.values()):
+                        raise ValueError(f"BF16 tensor shape/dtype mismatch: {layer}/{cid}/{projection}")
+                    base, coefficients = saliency_base(weights, saliency[layer])
+                    if not torch.isclose(coefficients.sum(), torch.tensor(1.0), atol=1e-6):
+                        raise AssertionError("averaging coefficients do not sum to one")
+                    if tuple(base.shape) != shape:
+                        raise AssertionError("shared base shape mismatch")
+                    dominant_by_kind = defaultdict(lambda: defaultdict(list))
+                    for expert, weight in weights.items():
+                        w = weight.float().numpy()
+                        residual = (weight.float() - base.float()).numpy()
+                        restored = base.float().numpy() + residual
+                        error = float(np.max(np.abs(restored - w)) / max(np.max(np.abs(w)), 1e-12))
+                        max_reconstruction_error = max(max_reconstruction_error, error)
+                        if not np.allclose(restored, w, rtol=1e-6, atol=1e-6):
+                            raise AssertionError(f"residual reconstruction failed: {layer}/{cid}/{expert}/{projection}")
+                        common = {"layer": layer, "group": cid, "expert": expert,
+                                  "projection": projection, "out_features": shape[0],
+                                  "in_features": shape[1]}
+                        for ki, (kind, matrix) in enumerate((("residual", residual), ("original_weight", w))):
+                            stats, reductions, dominant = analyze_rowwise_matrix(
+                                matrix, (args.seed, layer, expert, pi, ki))
+                            expert_rows.append({**common, "matrix_kind": kind,
+                                                "coefficient_sum": float(coefficients.sum()),
+                                                "reconstruction_relative_error": error if kind == "residual" else "",
+                                                **stats})
+                            reduction_rows.extend({**common, "matrix_kind": kind, **stats, **row}
+                                                  for row in reductions)
+                            for key, indices in dominant.items():
+                                dominant_by_kind[kind][key].append((expert, indices))
+                        if projection not in plotted:
+                            plot_representative_rows(
+                                residual, w, figure_dir / f"row_heatmap_layer{layer:02d}_{projection}.png",
+                                f"Layer {layer}, group {cid}, expert {expert}, {projection}",
+                                args.seed + layer * 100 + pi, args.figure_rows)
+                            plotted.add(projection)
+                    for kind, by_key in dominant_by_kind.items():
+                        for (k, selection), entries in by_key.items():
+                            for ai, (expert_a, indices_a) in enumerate(entries):
+                                for expert_b, indices_b in entries[ai + 1:]:
+                                    overlap_rows.append({"layer": layer, "group": cid,
+                                                         "projection": projection, "matrix_kind": kind,
+                                                         "k": k, "selection": selection,
+                                                         "expert_a": expert_a, "expert_b": expert_b,
+                                                         "jaccard": jaccard_indices(indices_a, indices_b)})
+    after_stat = args.groups_path.stat()
+    if (before_stat.st_size, before_stat.st_mtime_ns) != (after_stat.st_size, after_stat.st_mtime_ns):
+        raise AssertionError("group cache changed during read-only analysis")
+    per_expert = pd.DataFrame(expert_rows)
+    reductions = pd.DataFrame(reduction_rows)
+    overlaps = pd.DataFrame(overlap_rows)
+    if per_expert.empty or reductions.empty:
+        raise ValueError("selected layers contain no non-singleton experts")
+    per_expert.to_csv(output / "rowwise_per_expert.csv", index=False, float_format="%.10g")
+    reductions.to_csv(output / "rowwise_norm_reduction.csv", index=False, float_format="%.10g")
+    overlaps.to_csv(output / "rowwise_expert_overlap.csv", index=False, float_format="%.10g")
+    metrics = ["max_over_p99_median", "max_over_p99_p90", "max_over_p99_p95",
+               "max_over_p99_p99", "max_over_p99_max", "max_over_rms_median",
+               "max_over_rms_p90", "max_over_rms_p95", "max_over_rms_p99", "max_over_rms_max",
+               "row_l2_reduction_pct_median", "row_l2_reduction_pct_p90",
+               "row_l2_reduction_pct_p95", "row_l2_reduction_pct_p99", "row_l2_reduction_pct_max",
+               "row_squared_l2_reduction_pct_median", "row_squared_l2_reduction_pct_p90",
+               "row_squared_l2_reduction_pct_p95", "row_squared_l2_reduction_pct_p99",
+               "row_squared_l2_reduction_pct_max", "matrix_l2_reduction_pct",
+               "matrix_squared_l2_reduction_pct", "within_expert_row_jaccard",
+               "top_1pct_dimension_position_share", "most_frequent_dimension_row_share"]
+    keys = ["layer", "projection", "matrix_kind", "k", "selection"]
+    summary = reductions.groupby(keys, sort=True)[metrics].median().reset_index()
+    pooled = reductions.assign(layer="all").groupby(keys, sort=True)[metrics].median().reset_index()
+    summary = pd.concat([summary, pooled], ignore_index=True)
+    summary.to_csv(output / "rowwise_summary.csv", index=False, float_format="%.10g")
+    plot_rowwise_aggregates(per_expert, reductions, overlaps, figure_dir, PROJECTIONS)
+    write_rowwise_report(output / "REPORT.md", per_expert, reductions, overlaps, layers,
+                         max_reconstruction_error, args.groups_path, model_path, args.seed)
+    print(f"[rowwise] analyzed {len(layers)} layers; {len(per_expert)} expert/projection/matrix rows; "
+          f"maximum reconstruction error {max_reconstruction_error:g}")
+    print(f"[rowwise] outputs: {output}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--groups-path", type=Path, default=DEFAULT_GROUPS)
@@ -357,6 +471,8 @@ def main() -> None:
     parser.add_argument("--layers", default="all")
     parser.add_argument("--seed", type=int, default=2026)
     parser.add_argument("--figure-rows", type=int, default=256)
+    parser.add_argument("--rowwise", action="store_true",
+                        help="analyze per-row element outliers; write to OUTPUT_DIR/rowwise")
     args = parser.parse_args()
     if not args.groups_path.is_file():
         parser.error(f"ResCode grouping/saliency cache missing: {args.groups_path}. Generate compatible calibration and grouping first; no compressed checkpoint is required.")
@@ -382,6 +498,9 @@ def main() -> None:
             if source.get(key) != value:
                 raise ValueError(f"source config {key}={source.get(key)!r}; expected {value!r}")
     layers = parse_layers(args.layers, layer_count)
+    if args.rowwise:
+        run_rowwise_analysis(args, model_path, model_config, index, groups, saliency, layers)
+        return
     args.output_dir.mkdir(parents=True, exist_ok=True)
     figure_dir = args.output_dir / "figures"
     figure_dir.mkdir(exist_ok=True)
