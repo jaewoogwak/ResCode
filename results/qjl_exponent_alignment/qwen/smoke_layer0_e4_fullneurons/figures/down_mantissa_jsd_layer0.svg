@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="197" viewBox="0 0 192 197">
+<rect width="100%" height="100%" fill="white"/>
+<text x="96.0" y="29" font-size="17" text-anchor="middle" fill="#23313f" font-family="sans-serif">Down mantissa JSD, layer 0</text>
+<rect x="95.0" y="65.0" width="8.1" height="13.1" fill="#f5f9fc"/>
+<rect x="103.0" y="65.0" width="8.1" height="13.1" fill="#f4f8fb"/>
+<rect x="111.0" y="65.0" width="8.1" height="13.1" fill="#f4f8fb"/>
+<rect x="119.0" y="65.0" width="8.1" height="13.1" fill="#f4f8fb"/>
+<rect x="95.0" y="78.0" width="8.1" height="13.1" fill="#f4f8fb"/>
+<rect x="103.0" y="78.0" width="8.1" height="13.1" fill="#f5f9fc"/>
+<rect x="111.0" y="78.0" width="8.1" height="13.1" fill="#f4f8fb"/>
+<rect x="119.0" y="78.0" width="8.1" height="13.1" fill="#f4f8fb"/>
+<rect x="95.0" y="91.0" width="8.1" height="13.1" fill="#f4f8fb"/>
+<rect x="103.0" y="91.0" width="8.1" height="13.1" fill="#f4f8fb"/>
+<rect x="111.0" y="91.0" width="8.1" height="13.1" fill="#f5f9fc"/>
+<rect x="119.0" y="91.0" width="8.1" height="13.1" fill="#f4f8fb"/>
+<rect x="95.0" y="104.0" width="8.1" height="13.1" fill="#f4f8fb"/>
+<rect x="103.0" y="104.0" width="8.1" height="13.1" fill="#f4f8fb"/>
+<rect x="111.0" y="104.0" width="8.1" height="13.1" fill="#f4f8fb"/>
+<rect x="119.0" y="104.0" width="8.1" height="13.1" fill="#f5f9fc"/>
+<rect x="95" y="65" width="32.0" height="52.0" fill="none" stroke="#566"/>
+<text x="95" y="139" font-size="11" text-anchor="start" fill="#23313f" font-family="sans-serif">0</text>
+<text x="127" y="139" font-size="11" text-anchor="end" fill="#23313f" font-family="sans-serif">3</text>
+<text x="96.0" y="172" font-size="12" text-anchor="middle" fill="#23313f" font-family="sans-serif">Expert ID (column)</text>
+<text x="10" y="48" font-size="12" text-anchor="start" fill="#23313f" font-family="sans-serif">Expert ID (row)</text>
+<text x="135" y="79" font-size="11" text-anchor="start" fill="#23313f" font-family="sans-serif">max 1</text>
+<text x="135" y="94" font-size="11" text-anchor="start" fill="#23313f" font-family="sans-serif">JSD bits</text>
+<text x="88" y="74.1" font-size="10" text-anchor="end" fill="#23313f" font-family="sans-serif">0</text>
+<text x="88" y="87.1" font-size="10" text-anchor="end" fill="#23313f" font-family="sans-serif">1</text>
+<text x="88" y="100.1" font-size="10" text-anchor="end" fill="#23313f" font-family="sans-serif">2</text>
+<text x="88" y="113.1" font-size="10" text-anchor="end" fill="#23313f" font-family="sans-serif">3</text>
+</svg>
