@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="420" viewBox="0 0 880 420">
+<rect width="100%" height="100%" fill="white"/>
+<text x="440.0" y="28" font-size="18" text-anchor="middle" fill="#23313f" font-family="sans-serif">Up: Signed exponent difference entropy (bits)</text>
+<rect x="85" y="65" width="770" height="290" fill="none" stroke="#5c6770"/>
+<line x1="85" y1="355.0" x2="855" y2="355.0" stroke="#e1e8ed"/>
+<text x="77" y="359.0" font-size="11" text-anchor="end" fill="#23313f" font-family="sans-serif">3.2</text>
+<line x1="85" y1="282.5" x2="855" y2="282.5" stroke="#e1e8ed"/>
+<text x="77" y="286.5" font-size="11" text-anchor="end" fill="#23313f" font-family="sans-serif">3.2</text>
+<line x1="85" y1="210.0" x2="855" y2="210.0" stroke="#e1e8ed"/>
+<text x="77" y="214.0" font-size="11" text-anchor="end" fill="#23313f" font-family="sans-serif">3.2</text>
+<line x1="85" y1="137.5" x2="855" y2="137.5" stroke="#e1e8ed"/>
+<text x="77" y="141.5" font-size="11" text-anchor="end" fill="#23313f" font-family="sans-serif">3.2</text>
+<line x1="85" y1="65.0" x2="855" y2="65.0" stroke="#e1e8ed"/>
+<text x="77" y="69.0" font-size="11" text-anchor="end" fill="#23313f" font-family="sans-serif">3.3</text>
+<text x="85.0" y="375" font-size="11" text-anchor="middle" fill="#23313f" font-family="sans-serif">0</text>
+<text x="218.91304347826087" y="375" font-size="11" text-anchor="middle" fill="#23313f" font-family="sans-serif">4</text>
+<text x="352.82608695652175" y="375" font-size="11" text-anchor="middle" fill="#23313f" font-family="sans-serif">8</text>
+<text x="486.7391304347826" y="375" font-size="11" text-anchor="middle" fill="#23313f" font-family="sans-serif">12</text>
+<text x="620.6521739130435" y="375" font-size="11" text-anchor="middle" fill="#23313f" font-family="sans-serif">16</text>
+<text x="754.5652173913044" y="375" font-size="11" text-anchor="middle" fill="#23313f" font-family="sans-serif">20</text>
+<text x="855.0" y="375" font-size="11" text-anchor="middle" fill="#23313f" font-family="sans-serif">23</text>
+<polyline points="85.0,204.4 118.5,210.0 152.0,205.2 185.4,213.6 218.9,212.1 252.4,212.9 285.9,211.5 319.3,210.6 352.8,206.8 386.3,209.5 419.8,210.3 453.3,207.0 486.7,208.1 520.2,208.2 553.7,204.3 587.2,207.1 620.7,210.0 654.1,209.0 687.6,210.3 721.1,213.1 754.6,211.8 788.0,214.1 821.5,212.8 855.0,213.4" fill="none" stroke="#566573" stroke-width="2.5"/>
+<circle cx="85.0" cy="204.4" r="3" fill="#566573"/>
+<circle cx="118.5" cy="210.0" r="3" fill="#566573"/>
+<circle cx="152.0" cy="205.2" r="3" fill="#566573"/>
+<circle cx="185.4" cy="213.6" r="3" fill="#566573"/>
+<circle cx="218.9" cy="212.1" r="3" fill="#566573"/>
+<circle cx="252.4" cy="212.9" r="3" fill="#566573"/>
+<circle cx="285.9" cy="211.5" r="3" fill="#566573"/>
+<circle cx="319.3" cy="210.6" r="3" fill="#566573"/>
+<circle cx="352.8" cy="206.8" r="3" fill="#566573"/>
+<circle cx="386.3" cy="209.5" r="3" fill="#566573"/>
+<circle cx="419.8" cy="210.3" r="3" fill="#566573"/>
+<circle cx="453.3" cy="207.0" r="3" fill="#566573"/>
+<circle cx="486.7" cy="208.1" r="3" fill="#566573"/>
+<circle cx="520.2" cy="208.2" r="3" fill="#566573"/>
+<circle cx="553.7" cy="204.3" r="3" fill="#566573"/>
+<circle cx="587.2" cy="207.1" r="3" fill="#566573"/>
+<circle cx="620.7" cy="210.0" r="3" fill="#566573"/>
+<circle cx="654.1" cy="209.0" r="3" fill="#566573"/>
+<circle cx="687.6" cy="210.3" r="3" fill="#566573"/>
+<circle cx="721.1" cy="213.1" r="3" fill="#566573"/>
+<circle cx="754.6" cy="211.8" r="3" fill="#566573"/>
+<circle cx="788.0" cy="214.1" r="3" fill="#566573"/>
+<circle cx="821.5" cy="212.8" r="3" fill="#566573"/>
+<circle cx="855.0" cy="213.4" r="3" fill="#566573"/>
+<line x1="85" y1="403" x2="109" y2="403" stroke="#566573" stroke-width="3"/>
+<text x="115" y="407" font-size="12" text-anchor="start" fill="#23313f" font-family="sans-serif">before</text>
+<polyline points="85.0,206.5 118.5,212.3 152.0,207.3 185.4,215.4 218.9,213.7 252.4,215.0 285.9,213.6 319.3,212.8 352.8,209.4 386.3,212.1 419.8,213.1 453.3,209.8 486.7,211.4 520.2,211.5 553.7,207.3 587.2,210.3 620.7,212.7 654.1,211.4 687.6,212.2 721.1,214.8 754.6,213.5 788.0,215.7 821.5,214.2 855.0,215.1" fill="none" stroke="#087e8b" stroke-width="2.5"/>
+<circle cx="85.0" cy="206.5" r="3" fill="#087e8b"/>
+<circle cx="118.5" cy="212.3" r="3" fill="#087e8b"/>
+<circle cx="152.0" cy="207.3" r="3" fill="#087e8b"/>
+<circle cx="185.4" cy="215.4" r="3" fill="#087e8b"/>
+<circle cx="218.9" cy="213.7" r="3" fill="#087e8b"/>
+<circle cx="252.4" cy="215.0" r="3" fill="#087e8b"/>
+<circle cx="285.9" cy="213.6" r="3" fill="#087e8b"/>
+<circle cx="319.3" cy="212.8" r="3" fill="#087e8b"/>
+<circle cx="352.8" cy="209.4" r="3" fill="#087e8b"/>
+<circle cx="386.3" cy="212.1" r="3" fill="#087e8b"/>
+<circle cx="419.8" cy="213.1" r="3" fill="#087e8b"/>
+<circle cx="453.3" cy="209.8" r="3" fill="#087e8b"/>
+<circle cx="486.7" cy="211.4" r="3" fill="#087e8b"/>
+<circle cx="520.2" cy="211.5" r="3" fill="#087e8b"/>
+<circle cx="553.7" cy="207.3" r="3" fill="#087e8b"/>
+<circle cx="587.2" cy="210.3" r="3" fill="#087e8b"/>
+<circle cx="620.7" cy="212.7" r="3" fill="#087e8b"/>
+<circle cx="654.1" cy="211.4" r="3" fill="#087e8b"/>
+<circle cx="687.6" cy="212.2" r="3" fill="#087e8b"/>
+<circle cx="721.1" cy="214.8" r="3" fill="#087e8b"/>
+<circle cx="754.6" cy="213.5" r="3" fill="#087e8b"/>
+<circle cx="788.0" cy="215.7" r="3" fill="#087e8b"/>
+<circle cx="821.5" cy="214.2" r="3" fill="#087e8b"/>
+<circle cx="855.0" cy="215.1" r="3" fill="#087e8b"/>
+<line x1="235" y1="403" x2="259" y2="403" stroke="#087e8b" stroke-width="3"/>
+<text x="265" y="407" font-size="12" text-anchor="start" fill="#23313f" font-family="sans-serif">aligned</text>
+<polyline points="85.0,204.5 118.5,209.9 152.0,205.0 185.4,213.6 218.9,212.0 252.4,213.1 285.9,211.7 319.3,210.4 352.8,207.2 386.3,209.4 419.8,210.6 453.3,206.8 486.7,208.2 520.2,207.9 553.7,204.4 587.2,207.2 620.7,209.9 654.1,209.2 687.6,210.3 721.1,213.4 754.6,211.7 788.0,213.8 821.5,212.5 855.0,213.2" fill="none" stroke="#d9822b" stroke-width="2.5"/>
+<circle cx="85.0" cy="204.5" r="3" fill="#d9822b"/>
+<circle cx="118.5" cy="209.9" r="3" fill="#d9822b"/>
+<circle cx="152.0" cy="205.0" r="3" fill="#d9822b"/>
+<circle cx="185.4" cy="213.6" r="3" fill="#d9822b"/>
+<circle cx="218.9" cy="212.0" r="3" fill="#d9822b"/>
+<circle cx="252.4" cy="213.1" r="3" fill="#d9822b"/>
+<circle cx="285.9" cy="211.7" r="3" fill="#d9822b"/>
+<circle cx="319.3" cy="210.4" r="3" fill="#d9822b"/>
+<circle cx="352.8" cy="207.2" r="3" fill="#d9822b"/>
+<circle cx="386.3" cy="209.4" r="3" fill="#d9822b"/>
+<circle cx="419.8" cy="210.6" r="3" fill="#d9822b"/>
+<circle cx="453.3" cy="206.8" r="3" fill="#d9822b"/>
+<circle cx="486.7" cy="208.2" r="3" fill="#d9822b"/>
+<circle cx="520.2" cy="207.9" r="3" fill="#d9822b"/>
+<circle cx="553.7" cy="204.4" r="3" fill="#d9822b"/>
+<circle cx="587.2" cy="207.2" r="3" fill="#d9822b"/>
+<circle cx="620.7" cy="209.9" r="3" fill="#d9822b"/>
+<circle cx="654.1" cy="209.2" r="3" fill="#d9822b"/>
+<circle cx="687.6" cy="210.3" r="3" fill="#d9822b"/>
+<circle cx="721.1" cy="213.4" r="3" fill="#d9822b"/>
+<circle cx="754.6" cy="211.7" r="3" fill="#d9822b"/>
+<circle cx="788.0" cy="213.8" r="3" fill="#d9822b"/>
+<circle cx="821.5" cy="212.5" r="3" fill="#d9822b"/>
+<circle cx="855.0" cy="213.2" r="3" fill="#d9822b"/>
+<line x1="385" y1="403" x2="409" y2="403" stroke="#d9822b" stroke-width="3"/>
+<text x="415" y="407" font-size="12" text-anchor="start" fill="#23313f" font-family="sans-serif">random</text>
+<text x="440.0" y="377" font-size="12" text-anchor="middle" fill="#23313f" font-family="sans-serif">MoE layer</text>
+<text x="12" y="48" font-size="12" text-anchor="start" fill="#23313f" font-family="sans-serif">Signed exponent difference entropy (bits)</text>
+</svg>
