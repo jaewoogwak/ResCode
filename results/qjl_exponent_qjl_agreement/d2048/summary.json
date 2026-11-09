@@ -1,0 +1,193 @@
+{
+  "bitorder": "little",
+  "cosine_theory": "1 - acos(cosine) / pi; zero-norm rows excluded",
+  "d": 2048,
+  "experts": 60,
+  "input_dim": 2048,
+  "layer": 12,
+  "model": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+  "model_dir": "/workspace/.hf_home/hub/models--Qwen--Qwen1.5-MoE-A2.7B-Chat/snapshots/ec052fda178e241c7c443468d2fa1db6618996be",
+  "pairs": 1770,
+  "projection": "up",
+  "projection_dtype": "float16",
+  "random_rows": "seeded independent permutation per expert for bundling; per-pair permutation for agreement",
+  "rows": 1408,
+  "seed": 0,
+  "self_test": "passed",
+  "storage": "4-byte LE JSON-header length + JSON metadata + bitpacked bytes + FP32 row norms; zlib level 1 separately reported",
+  "variants": {
+    "centered_exponent_scale": {
+      "bit_balance": 0.5006639942978368,
+      "gaussian_theory_agreement_mean": 0.50062259958151,
+      "majority": {
+        "aligned_rows": {
+          "bitpacked_ratio": 0.9838542786217641,
+          "correction_bytes": 21626880,
+          "flip_rate": 0.4469422484889175,
+          "individual_bitpacked_bytes": 21965264,
+          "individual_metadata_bytes": 464,
+          "individual_zlib_bytes": 21912129,
+          "lossy_majority_agreement": 0.5530577515110825,
+          "metadata_bytes": 481,
+          "row_norm_bytes": 337920,
+          "shared_sketch_bytes": 360448,
+          "shared_xor_bitpacked_bytes": 22325729,
+          "shared_xor_zlib_bytes": 22236697,
+          "xor_binary_entropy_bits_per_bit": 0.9918619528380608,
+          "zlib_ratio": 0.9854039473578292
+        },
+        "random_rows": {
+          "bitpacked_ratio": 0.9838543212898018,
+          "correction_bytes": 21626880,
+          "flip_rate": 0.44689440293745564,
+          "individual_bitpacked_bytes": 21965323,
+          "individual_metadata_bytes": 523,
+          "individual_zlib_bytes": 21912165,
+          "lossy_majority_agreement": 0.5531055970625444,
+          "metadata_bytes": 540,
+          "row_norm_bytes": 337920,
+          "shared_sketch_bytes": 360448,
+          "shared_xor_bitpacked_bytes": 22325788,
+          "shared_xor_zlib_bytes": 22236629,
+          "xor_binary_entropy_bits_per_bit": 0.9918472412238811,
+          "zlib_ratio": 0.9854085796907436
+        }
+      },
+      "pair_agreement_mean": 0.5005852593969062,
+      "random_pair_agreement_mean": 0.500607156582104,
+      "row_cosine_mean": 0.001955347284913495,
+      "within_expert_agreement_mean": 0.5008308092753092,
+      "within_pairs_sampled_per_expert": 1024
+    },
+    "exponent_scale": {
+      "bit_balance": 0.5045748450539329,
+      "gaussian_theory_agreement_mean": 0.7090696939472425,
+      "majority": {
+        "aligned_rows": {
+          "bitpacked_ratio": 0.9838542721130606,
+          "correction_bytes": 21626880,
+          "flip_rate": 0.21385418863007516,
+          "individual_bitpacked_bytes": 21965255,
+          "individual_metadata_bytes": 455,
+          "individual_zlib_bytes": 21823487,
+          "lossy_majority_agreement": 0.7861458113699249,
+          "metadata_bytes": 472,
+          "row_norm_bytes": 337920,
+          "shared_sketch_bytes": 360448,
+          "shared_xor_bitpacked_bytes": 22325720,
+          "shared_xor_zlib_bytes": 17739656,
+          "xor_binary_entropy_bits_per_bit": 0.7487855775436685,
+          "zlib_ratio": 1.2302091427252029
+        },
+        "random_rows": {
+          "bitpacked_ratio": 0.9838543147811326,
+          "correction_bytes": 21626880,
+          "flip_rate": 0.21384450161095822,
+          "individual_bitpacked_bytes": 21965314,
+          "individual_metadata_bytes": 514,
+          "individual_zlib_bytes": 21823488,
+          "lossy_majority_agreement": 0.7861554983890418,
+          "metadata_bytes": 531,
+          "row_norm_bytes": 337920,
+          "shared_sketch_bytes": 360448,
+          "shared_xor_bitpacked_bytes": 22325779,
+          "shared_xor_zlib_bytes": 17738407,
+          "xor_binary_entropy_bits_per_bit": 0.7487673832775888,
+          "zlib_ratio": 1.230295820814124
+        }
+      },
+      "pair_agreement_mean": 0.7063344517547655,
+      "random_pair_agreement_mean": 0.706349257560773,
+      "row_cosine_mean": 0.6105386898763435,
+      "within_expert_agreement_mean": 0.7064284563064576,
+      "within_pairs_sampled_per_expert": 1024
+    },
+    "original": {
+      "bit_balance": 0.4999751640088631,
+      "gaussian_theory_agreement_mean": 0.5000029311303488,
+      "majority": {
+        "aligned_rows": {
+          "bitpacked_ratio": 0.983854267773922,
+          "correction_bytes": 21626880,
+          "flip_rate": 0.4486958532622366,
+          "individual_bitpacked_bytes": 21965249,
+          "individual_metadata_bytes": 449,
+          "individual_zlib_bytes": 21912263,
+          "lossy_majority_agreement": 0.5513041467377634,
+          "metadata_bytes": 466,
+          "row_norm_bytes": 337920,
+          "shared_sketch_bytes": 360448,
+          "shared_xor_bitpacked_bytes": 22325714,
+          "shared_xor_zlib_bytes": 22246654,
+          "xor_binary_entropy_bits_per_bit": 0.9923919369627341,
+          "zlib_ratio": 0.984968930608621
+        },
+        "random_rows": {
+          "bitpacked_ratio": 0.983854310442017,
+          "correction_bytes": 21626880,
+          "flip_rate": 0.4487123142589222,
+          "individual_bitpacked_bytes": 21965308,
+          "individual_metadata_bytes": 508,
+          "individual_zlib_bytes": 21912332,
+          "lossy_majority_agreement": 0.5512876857410778,
+          "metadata_bytes": 525,
+          "row_norm_bytes": 337920,
+          "shared_sketch_bytes": 360448,
+          "shared_xor_bitpacked_bytes": 22325773,
+          "shared_xor_zlib_bytes": 22246605,
+          "xor_binary_entropy_bits_per_bit": 0.9923968269092125,
+          "zlib_ratio": 0.9849742016815599
+        }
+      },
+      "pair_agreement_mean": 0.500000184759092,
+      "random_pair_agreement_mean": 0.500000379902311,
+      "row_cosine_mean": 9.142051313954259e-06,
+      "within_expert_agreement_mean": 0.49999845822652184,
+      "within_pairs_sampled_per_expert": 1024
+    },
+    "sign_mantissa": {
+      "bit_balance": 0.5000575383504231,
+      "gaussian_theory_agreement_mean": 0.5000051718210954,
+      "majority": {
+        "aligned_rows": {
+          "bitpacked_ratio": 0.983854271389871,
+          "correction_bytes": 21626880,
+          "flip_rate": 0.44871152820009175,
+          "individual_bitpacked_bytes": 21965254,
+          "individual_metadata_bytes": 454,
+          "individual_zlib_bytes": 21872865,
+          "lossy_majority_agreement": 0.5512884717999083,
+          "metadata_bytes": 471,
+          "row_norm_bytes": 337920,
+          "shared_sketch_bytes": 360448,
+          "shared_xor_bitpacked_bytes": 22325719,
+          "shared_xor_zlib_bytes": 22207644,
+          "xor_binary_entropy_bits_per_bit": 0.9923965934364625,
+          "zlib_ratio": 0.984925055534932
+        },
+        "random_rows": {
+          "bitpacked_ratio": 0.9838543140579469,
+          "correction_bytes": 21626880,
+          "flip_rate": 0.44872059099601974,
+          "individual_bitpacked_bytes": 21965313,
+          "individual_metadata_bytes": 513,
+          "individual_zlib_bytes": 21872888,
+          "lossy_majority_agreement": 0.5512794090039803,
+          "metadata_bytes": 530,
+          "row_norm_bytes": 337920,
+          "shared_sketch_bytes": 360448,
+          "shared_xor_bitpacked_bytes": 22325778,
+          "shared_xor_zlib_bytes": 22207715,
+          "xor_binary_entropy_bits_per_bit": 0.9923992850211965,
+          "zlib_ratio": 0.9849229423198199
+        }
+      },
+      "pair_agreement_mean": 0.4999995985457269,
+      "random_pair_agreement_mean": 0.5000054665571859,
+      "row_cosine_mean": 1.6179606789635982e-05,
+      "within_expert_agreement_mean": 0.5000221252441406,
+      "within_pairs_sampled_per_expert": 1024
+    }
+  },
+  "within_pairs": "deterministic distinct random row pairs sampled within each expert"
+}
