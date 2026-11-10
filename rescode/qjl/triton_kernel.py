@@ -29,9 +29,10 @@ def _packed_dot_legacy(Z, B, NORM, OUT, D: tl.constexpr, M: tl.constexpr,
     tl.store(OUT + token * M + rows, y, rows < M)
 
 
-@triton.jit
+# The token count changes across routed experts and evaluation requests.
+@triton.jit(do_not_specialize=["M"])
 def _packed_tiled(Z, PG, PU, NG, NU, OUT,
-                  M: tl.constexpr, N: tl.constexpr, D: tl.constexpr,
+                  M, N: tl.constexpr, D: tl.constexpr,
                   BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr,
                   FUSED: tl.constexpr):
     row = tl.program_id(0) * BN + tl.arange(0, BN)

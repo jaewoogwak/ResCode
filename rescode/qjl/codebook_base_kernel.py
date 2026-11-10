@@ -5,8 +5,9 @@ import triton
 import triton.language as tl
 
 
-@triton.jit
-def _linear(X, CODES, SCALES, Y, M: tl.constexpr, N: tl.constexpr,
+# Routed token counts vary per expert; keep M dynamic to reuse one kernel.
+@triton.jit(do_not_specialize=["M"])
+def _linear(X, CODES, SCALES, Y, M, N: tl.constexpr,
             K: tl.constexpr, BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr):
     row = tl.program_id(0) * BM + tl.arange(0, BM)
     out = tl.program_id(1) * BN + tl.arange(0, BN)
