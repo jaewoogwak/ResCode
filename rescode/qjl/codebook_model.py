@@ -1,4 +1,4 @@
-"""Independent Qwen 2-bit codebook base plus packed QJL residual model."""
+"""Qwen packed Base (codebook or exponent/mantissa) plus QJL residual model."""
 
 import math
 import os
@@ -11,10 +11,49 @@ import torch.nn.functional as F
 
 from .codebook_base import PackedCodebookBase, encode_base
 from .core import PackedResidual, ProjectionBank, pack_residual, qjl_triton_fused_gate_up
+from .exponent_mantissa_base import (PackedExponentMantissaBase,
+    encode_exponent_mantissa_base, exponent_mantissa_base_bytes)
 from .exponent_model import PROJECTIONS, _install
 
 
 FORMAT = "rescode-codebook-base-qjl-v1"
+
+
+def base_state_bytes(state):
+    if state.get("format"):
+        return exponent_mantissa_base_bytes(state)
+    return (state["packed"].numel() + state["scales"].numel() * 2
+            + state["zero_indices"].numel() * 4)
+
+
+def restore_base(state, device, method):
+    if method == "codebook":
+        return PackedCodebookBase(state, device)
+    if method == "exponent-mantissa":
+        return PackedExponentMantissaBase(state, device)
+    raise ValueError(f"unknown base method: {method}")
+
+
+def gpu_resident_breakdown(model):
+    """Count compressed expert buffers actually placed on CUDA devices."""
+    base_bytes = qjl_bytes = 0
+    for block in model.model.layers:
+        experts = getattr(block.mlp, "_compact_experts", ())
+        for expert in experts:
+            for base in expert.bases.values():
+                first = next(base.buffers())
+                if first.is_cuda:
+                    base_bytes += base.resident_bytes()
+            for residual in expert.residuals.values():
+                if residual.packed.is_cuda:
+                    qjl_bytes += (residual.packed.numel() * residual.packed.element_size()
+                                  + residual.norms.numel() * residual.norms.element_size())
+    projection_bytes = sum(bank.resident_bytes("cuda") for bank in
+                           getattr(model, "_codebook_projection_banks", {}).values())
+    return {"gpu_resident_base_bytes": base_bytes,
+            "gpu_resident_qjl_bytes": qjl_bytes,
+            "gpu_resident_projection_bytes": projection_bytes,
+            "gpu_resident_compact_total_bytes": base_bytes + qjl_bytes + projection_bytes}
 
 
 def bank_for(banks, input_dim, factor, seed):
@@ -58,7 +97,8 @@ def _synchronize(device):
 
 
 def encode_projection(weight, bank, backend, iterations=8, row_chunk=None,
-                      *, base_row_chunk=512, qjl_row_chunk=128):
+                      *, base_row_chunk=512, qjl_row_chunk=128,
+                      base_method="codebook"):
     """Encode one matrix and report synchronized stage timings.
 
     ``row_chunk`` is retained for callers of the original independent API.
@@ -73,15 +113,22 @@ def encode_projection(weight, bank, backend, iterations=8, row_chunk=None,
     else:
         starting_bytes = None
     start = time.perf_counter()
-    state = encode_base(weight, iterations=iterations, row_chunk=base_row_chunk,
-                        return_cpu=False)
+    if base_method == "codebook":
+        state = encode_base(weight, iterations=iterations, row_chunk=base_row_chunk,
+                            return_cpu=False)
+    elif base_method == "exponent-mantissa":
+        state = encode_exponent_mantissa_base(weight)
+    else:
+        raise ValueError(f"unknown base method: {base_method}")
     _synchronize(weight.device)
     after_base = time.perf_counter()
-    base = PackedCodebookBase(state, weight.device)
+    base = restore_base(state, weight.device, base_method)
     decoded = base.decode()
     weight_fp32 = weight.float()
-    residual = weight_fp32 - decoded
-    if not torch.allclose(decoded + residual, weight_fp32, rtol=1e-6, atol=1e-6):
+    residual = torch.where(torch.isfinite(weight_fp32), weight_fp32 - decoded,
+                           torch.zeros_like(decoded))
+    if not torch.allclose(decoded + residual, weight_fp32, rtol=1e-6, atol=1e-6,
+                          equal_nan=True):
         raise AssertionError("base + residual reconstruction failed")
     _synchronize(weight.device)
     after_residual = time.perf_counter()
@@ -103,6 +150,8 @@ def encode_projection(weight, bank, backend, iterations=8, row_chunk=None,
     stored = {"base": stored_base, "packed": packed.cpu(), "norms": norms.cpu()}
     _synchronize(weight.device)
     after_transfer = time.perf_counter()
+    base_bytes = base_state_bytes(state)
+    qjl_bytes = packed.numel() + norms.numel() * norms.element_size()
     record = {"rows": weight.shape[0], "cols": weight.shape[1],
               "weight_squared_norm": weight_sq,
               "residual_squared_norm": residual_sq,
@@ -112,10 +161,14 @@ def encode_projection(weight, bank, backend, iterations=8, row_chunk=None,
               "row_ratio_median": row_median,
               "row_ratio_p90": row_p90,
               "row_ratio_max": row_max,
-              "base_bytes": base.resident_bytes(),
-              "qjl_bytes": packed.numel() + norms.numel() * norms.element_size(),
-              "bits_per_weight": 8 * (base.resident_bytes() + packed.numel()
-                                      + norms.numel() * norms.element_size()) / weight.numel(),
+              "base_method": base_method,
+              "base_bytes": base_bytes,
+              "base_gpu_resident_bytes": base.resident_bytes(),
+              "qjl_bytes": qjl_bytes,
+              "qjl_gpu_resident_bytes": qjl_bytes,
+              "base_bits_per_weight": 8 * base_bytes / weight.numel(),
+              "qjl_bits_per_weight": 8 * qjl_bytes / weight.numel(),
+              "bits_per_weight": 8 * (base_bytes + qjl_bytes) / weight.numel(),
               "time_encode_base_s": after_base - start,
               "time_residual_s": after_residual - after_base,
               "time_pack_residual_s": after_qjl - after_residual,
@@ -154,7 +207,8 @@ def compress_model(model, config):
                 base, qjl, state, record = encode_projection(
                     weight, bank, config["backend"], config["iterations"],
                     base_row_chunk=config.get("base_row_chunk", config.get("row_chunk", 128)),
-                    qjl_row_chunk=config.get("qjl_row_chunk", config.get("row_chunk", 128)))
+                    qjl_row_chunk=config.get("qjl_row_chunk", config.get("row_chunk", 128)),
+                    base_method=config.get("base_method", "codebook"))
                 bases[key], residuals[key], parts[key] = base, qjl, state
                 projection_timings[key] = record["time_total_s"]
                 records.append({"layer": layer, "expert": expert_id,
@@ -187,8 +241,7 @@ def save_checkpoint(data, config, path):
     tmp = path.with_name(path.name + f".tmp{os.getpid()}")
     torch.save({"format": FORMAT, "config": config, "layers": data}, tmp)
     os.replace(tmp, path)
-    base_bytes = sum(p["base"]["packed"].numel() + p["base"]["scales"].numel() * 2
-                     + p["base"]["zero_indices"].numel() * 4
+    base_bytes = sum(base_state_bytes(p["base"])
                      for experts in data.values() for expert in experts.values()
                      for p in expert.values())
     qjl_bytes = sum(p["packed"].numel() + p["norms"].numel() * 4
@@ -214,7 +267,8 @@ def load_checkpoint(model, path, backend=None):
             states = expert_states[expert_id]
             bases, residuals = {}, {}
             for key, part in states.items():
-                base = PackedCodebookBase(part["base"], device)
+                base = restore_base(part["base"], device,
+                                    config.get("base_method", "codebook"))
                 bank = bank_for(banks, base.shape[1], config["qjl_d_factor"],
                                 config["projection_seed"])
                 residual = PackedResidual(part["packed"].to(device),

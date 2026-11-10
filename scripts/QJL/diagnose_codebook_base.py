@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Calibration-free Frobenius diagnostics for Qwen 2-bit codebook bases."""
+"""Calibration-free Frobenius diagnostics for selectable Qwen packed Bases."""
 
 import argparse
 import csv
@@ -17,6 +17,8 @@ import torch
 from safetensors import safe_open
 
 from rescode.qjl.codebook_base import PackedCodebookBase, encode_base
+from rescode.qjl.exponent_mantissa_base import (PackedExponentMantissaBase,
+    encode_exponent_mantissa_base, exponent_mantissa_base_bytes)
 
 MODEL_PATH = (Path.home() / ".cache/huggingface/hub/models--Qwen--Qwen1.5-MoE-A2.7B-Chat"
               / "snapshots/ec052fda178e241c7c443468d2fa1db6618996be")
@@ -39,8 +41,14 @@ def aggregate(records):
                 "aggregated_frobenius_ratio": math.sqrt(r2 / w2) if w2 else None,
                 "base_only_relative_frobenius_error": math.sqrt(r2 / w2) if w2 else None,
                 "base_tensor_bytes": sum(r["base_bytes"] for r in subset),
+                "base_gpu_resident_bytes": sum(r.get("base_gpu_resident_bytes", r["base_bytes"])
+                                               for r in subset),
                 "qjl_tensor_bytes": sum(r["qjl_bytes"] for r in subset),
                 "weight_count": sum(r["rows"] * r["cols"] for r in subset),
+                "base_bits_per_weight": (8 * sum(r["base_bytes"] for r in subset)
+                                         / sum(r["rows"] * r["cols"] for r in subset)),
+                "qjl_bits_per_weight": (8 * sum(r["qjl_bytes"] for r in subset)
+                                        / sum(r["rows"] * r["cols"] for r in subset)),
                 "bits_per_weight": (8 * sum(r["base_bytes"] + r["qjl_bytes"] for r in subset)
                                     / sum(r["rows"] * r["cols"] for r in subset))}
     return {"overall": summarize(records),
@@ -61,6 +69,10 @@ def main():
     parser.add_argument("--experts", default="all")
     parser.add_argument("--projections", default="gate,up,down")
     parser.add_argument("--qjl-d-factor", type=float, default=1.0)
+    parser.add_argument("--base-method", choices=("codebook", "exponent-mantissa"),
+                        default="codebook")
+    parser.add_argument("--compare-base-methods", action="store_true",
+                        help="Also diagnose the other Base method on each selected matrix")
     parser.add_argument("--iterations", type=int, default=8)
     parser.add_argument("--base-row-chunk", type=int, default=512)
     parser.add_argument("--row-chunk", type=int, default=None,
@@ -94,6 +106,9 @@ def main():
     out = args.output_dir
     out.mkdir(parents=True, exist_ok=True)
     records = []
+    methods = [args.base_method]
+    if args.compare_base_methods or args.base_method == "exponent-mantissa":
+        methods.append("exponent-mantissa" if args.base_method == "codebook" else "codebook")
     weight_map = index["weight_map"]
     with ExitStack() as stack:
         handles = {}
@@ -108,38 +123,81 @@ def main():
                     weight = handles[shard].get_tensor(name).to(device)
                     if weight.dtype != torch.bfloat16 or weight.ndim != 2:
                         raise ValueError(f"expected BF16 matrix: {name}")
-                    state = encode_base(weight, args.iterations, args.base_row_chunk,
-                                        return_cpu=False)
-                    decoded = PackedCodebookBase(state, device).decode()
-                    residual = weight.float() - decoded
-                    if not torch.allclose(decoded + residual, weight.float(), rtol=1e-6, atol=1e-6):
-                        raise AssertionError(f"residual reconstruction failed: {name}")
-                    w2 = weight.float().square().sum().item()
-                    r2 = residual.square().sum().item()
-                    row_w = torch.linalg.vector_norm(weight.float(), dim=1)
-                    row_r = torch.linalg.vector_norm(residual, dim=1)
-                    ratios = row_r / row_w.clamp_min(1e-30)
-                    base_bytes = (state["packed"].numel() + state["scales"].numel() * 2
-                                  + state["zero_indices"].numel() * 4)
-                    d = round(weight.shape[1] * args.qjl_d_factor)
-                    qjl_bytes = weight.shape[0] * ((d + 7) // 8 + 4)
-                    ratio = math.sqrt(r2 / w2) if w2 else None
-                    records.append({"layer": layer, "expert": expert, "projection": projection,
-                                    "rows": weight.shape[0], "cols": weight.shape[1],
-                                    "weight_squared_norm": w2, "residual_squared_norm": r2,
-                                    "residual_frobenius_ratio": ratio,
-                                    "base_only_relative_frobenius_error": ratio,
-                                    "row_ratio_mean": ratios.mean().item(),
-                                    "row_ratio_median": ratios.median().item(),
-                                    "row_ratio_p90": torch.quantile(ratios, 0.9).item(),
-                                    "row_ratio_max": ratios.max().item(),
-                                    "base_bytes": base_bytes, "qjl_bytes": qjl_bytes,
-                                    "bits_per_weight": 8 * (base_bytes + qjl_bytes) / weight.numel()})
-                    print(f"[diagnostics] layer={layer} expert={expert} projection={projection} "
-                          f"rho_F={ratio:.6f}", flush=True)
-                    del weight, decoded, residual, state
+                    for method in methods:
+                        if method == "codebook":
+                            state = encode_base(weight, args.iterations, args.base_row_chunk,
+                                                return_cpu=False)
+                            base = PackedCodebookBase(state, device)
+                            base_bytes = base.resident_bytes()
+                        else:
+                            state = encode_exponent_mantissa_base(weight)
+                            base = PackedExponentMantissaBase(state, device)
+                            base_bytes = exponent_mantissa_base_bytes(state)
+                        decoded = base.decode()
+                        weight_fp32 = weight.float()
+                        residual = torch.where(torch.isfinite(weight_fp32),
+                                               weight_fp32 - decoded,
+                                               torch.zeros_like(decoded))
+                        if not torch.allclose(decoded + residual, weight_fp32,
+                                              rtol=1e-6, atol=1e-6, equal_nan=True):
+                            raise AssertionError(f"residual reconstruction failed: {name}")
+                        w2 = weight_fp32.square().sum().item()
+                        r2 = residual.square().sum().item()
+                        row_w = torch.linalg.vector_norm(weight_fp32, dim=1)
+                        row_r = torch.linalg.vector_norm(residual, dim=1)
+                        ratios = row_r / row_w.clamp_min(1e-30)
+                        d = round(weight.shape[1] * args.qjl_d_factor)
+                        qjl_bytes = weight.shape[0] * ((d + 7) // 8 + 4)
+                        ratio = math.sqrt(r2 / w2) if w2 else None
+                        records.append({"layer": layer, "expert": expert,
+                                        "projection": projection, "base_method": method,
+                                        "rows": weight.shape[0], "cols": weight.shape[1],
+                                        "weight_squared_norm": w2, "residual_squared_norm": r2,
+                                        "residual_frobenius_ratio": ratio,
+                                        "base_only_relative_frobenius_error": ratio,
+                                        "row_ratio_mean": ratios.mean().item(),
+                                        "row_ratio_median": ratios.median().item(),
+                                        "row_ratio_p90": torch.quantile(ratios, 0.9).item(),
+                                        "row_ratio_max": ratios.max().item(),
+                                        "base_bytes": base_bytes,
+                                        "base_gpu_resident_bytes": base.resident_bytes(),
+                                        "qjl_bytes": qjl_bytes,
+                                        "base_bits_per_weight": 8 * base_bytes / weight.numel(),
+                                        "qjl_bits_per_weight": 8 * qjl_bytes / weight.numel(),
+                                        "bits_per_weight": 8 * (base_bytes + qjl_bytes) / weight.numel()})
+                        print(f"[diagnostics] layer={layer} expert={expert} "
+                              f"projection={projection} base={method} rho_F={ratio:.6f}",
+                              flush=True)
+                        del decoded, residual, state, base
+                    del weight
             # Handles are kept only for current shard set; weight tensors are transient.
-    summary = aggregate(records)
+    primary = [r for r in records if r["base_method"] == args.base_method]
+    summary = aggregate(primary)
+    summary["base_method"] = args.base_method
+    summary["comparison_by_method"] = {
+        method: aggregate([r for r in records if r["base_method"] == method])
+        for method in methods}
+    if len(methods) == 2:
+        old = summary["comparison_by_method"]["codebook"]
+        new = summary["comparison_by_method"]["exponent-mantissa"]
+        def difference(old_stats, new_stats):
+            return {
+                "residual_ratio_change": (
+                    new_stats["aggregated_frobenius_ratio"]
+                    - old_stats["aggregated_frobenius_ratio"]),
+                "base_bits_per_weight_change": (
+                    new_stats["base_bits_per_weight"]
+                    - old_stats["base_bits_per_weight"]),
+                "combined_bits_per_weight_change": (
+                    new_stats["bits_per_weight"] - old_stats["bits_per_weight"]),
+            }
+        summary["exponent_mantissa_vs_codebook"] = {
+            "overall": difference(old["overall"], new["overall"]),
+            "by_projection": {
+                projection: difference(old["by_projection"][projection],
+                                       new["by_projection"][projection])
+                for projection in projections},
+        }
     summary["model_path"] = str(model_path)
     summary["layers"] = layers
     summary["experts"] = experts
@@ -147,6 +205,13 @@ def main():
     summary["qjl_d_factor"] = args.qjl_d_factor
     summary["device"] = device
     summary["checkpoint_bytes"] = args.checkpoint.stat().st_size if args.checkpoint else None
+    count = summary["overall"]["weight_count"]
+    summary["base_bits_per_weight"] = 8 * summary["overall"]["base_tensor_bytes"] / count
+    summary["qjl_bits_per_weight"] = 8 * summary["overall"]["qjl_tensor_bytes"] / count
+    complete = (len(layers) == config["num_hidden_layers"] and
+                len(experts) == config["num_experts"] and set(projections) == set(PROJECTIONS))
+    summary["checkpoint_bits_per_weight"] = (
+        8 * summary["checkpoint_bytes"] / count if args.checkpoint and complete else None)
     summary["checkpoint_bytes_note"] = ("actual on-disk file size" if args.checkpoint
                                         else "no checkpoint supplied; qjl_tensor_bytes is projected storage")
     atomic_json(out / "diagnostics.json", {"records": records})

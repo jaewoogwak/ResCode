@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Qwen 2-bit Codebook Base + packed QJL residual compression/evaluation."""
+"""Qwen selectable packed Base plus QJL residual compression/evaluation."""
 
 import argparse
 import csv
@@ -18,7 +18,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from diagnose_codebook_base import aggregate, atomic_json, select
 from rescode.evaluation import evaluate_fewshot
 from rescode.merging.eval_summary import report_eval_summary
-from rescode.qjl.codebook_model import compress_model, load_checkpoint, save_checkpoint
+from rescode.qjl.codebook_model import (compress_model, gpu_resident_breakdown,
+                                        load_checkpoint, save_checkpoint)
 
 MODEL = "Qwen/Qwen1.5-MoE-A2.7B-Chat"
 MODEL_PATH = (Path.home() / ".cache/huggingface/hub/models--Qwen--Qwen1.5-MoE-A2.7B-Chat"
@@ -29,6 +30,8 @@ TASKS = "winogrande,arc_easy,arc_challenge,boolq,hellaswag,mmlu,openbookqa,rte"
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--mode", choices=("compress", "eval"), required=True)
+    p.add_argument("--base-method", choices=("codebook", "exponent-mantissa"),
+                   default="codebook", help="Base used for compression; eval reads the checkpoint")
     p.add_argument("--model-path", type=Path, default=MODEL_PATH)
     p.add_argument("--output-dir", type=Path, default=ROOT / "results/qjl_codebook_base/run")
     p.add_argument("--checkpoint", type=Path)
@@ -96,6 +99,7 @@ def main():
             raise ValueError("selected layer lacks routed experts")
         config = {"format": "rescode-codebook-base-qjl-v1", "model": MODEL,
                   "layers": layers, "qjl_d_factor": args.qjl_d_factor,
+                  "base_method": args.base_method,
                   "projection_seed": args.projection_seed, "backend": args.backend,
                   "iterations": args.iterations, "row_chunk": args.qjl_row_chunk,
                   "base_row_chunk": args.base_row_chunk,
@@ -119,6 +123,12 @@ def main():
             (r["peak_extra_cuda_bytes"] or 0 for r in records), default=0)
         summary["checkpoint_bits_per_weight"] = (
             8 * sizes["checkpoint_bytes"] / summary["overall"]["weight_count"])
+        summary["base_bits_per_weight"] = (
+            8 * sizes["base_tensor_bytes"] / summary["overall"]["weight_count"])
+        summary["qjl_bits_per_weight"] = (
+            8 * sizes["qjl_tensor_bytes"] / summary["overall"]["weight_count"])
+        summary["base_method"] = args.base_method
+        summary.update(gpu_resident_breakdown(model))
         atomic_json(out / "diagnostics.json", {"records": records})
         with (out / "diagnostics.csv").open("w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=list(records[0]))
@@ -137,6 +147,7 @@ def main():
             raise AssertionError(f"checkpoint reload changed logits: {parity}")
     else:
         payload = load_checkpoint(model, args.checkpoint, backend=args.backend)
+        metrics["base_method"] = payload["config"].get("base_method", "codebook")
         metrics["checkpoint"] = str(args.checkpoint)
         metrics["checkpoint_bytes"] = args.checkpoint.stat().st_size
         metrics["checkpoint_config"] = payload["config"]
@@ -149,6 +160,14 @@ def main():
             metrics["task_summary"] = report_eval_summary(
                 results, args.task, str(path), header="Codebook Base + QJL evaluation")
             metrics["task_results"] = results.get("results", {})
+    metrics.update(gpu_resident_breakdown(model))
+    if torch.cuda.is_available():
+        metrics["gpu_process_allocated_bytes"] = [
+            torch.cuda.memory_allocated(i) for i in range(torch.cuda.device_count())]
+        metrics["gpu_process_reserved_bytes"] = [
+            torch.cuda.memory_reserved(i) for i in range(torch.cuda.device_count())]
+        metrics["gpu_process_peak_allocated_bytes"] = [
+            torch.cuda.max_memory_allocated(i) for i in range(torch.cuda.device_count())]
     atomic_json(out / "metrics.json", metrics)
     print(f"[codebook] saved metrics to {out / 'metrics.json'}", flush=True)
 

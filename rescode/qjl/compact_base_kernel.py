@@ -171,7 +171,7 @@ def _linear_palette_reduce(X, CODES, DATA, OFFSETS, MODES, SPECIAL_IDX,
     tl.store(OUT + token * N + row, acc, row < N)
 
 
-def compact_linear(x: torch.Tensor, base) -> torch.Tensor:
+def compact_linear(x: torch.Tensor, base, *, out_dtype=None) -> torch.Tensor:
     if x.dtype != torch.bfloat16 or not x.is_cuda or x.device != base.codes.device:
         raise ValueError("compact Triton linear requires CUDA BF16 inputs on the base device")
     leading = x.shape[:-1]
@@ -179,7 +179,8 @@ def compact_linear(x: torch.Tensor, base) -> torch.Tensor:
     n, k = base.shape
     if x.shape[1] != k:
         raise ValueError("compact linear input dimension mismatch")
-    out = torch.empty((x.shape[0], n), device=x.device, dtype=x.dtype)
+    out = torch.empty((x.shape[0], n), device=x.device,
+                      dtype=out_dtype if out_dtype is not None else x.dtype)
     if base.format == BLOCK_FORMAT:
         m = x.shape[0]
         special_count = base.special_indices.numel()
