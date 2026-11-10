@@ -1,0 +1,12 @@
+{
+  "mode": "compress",
+  "model": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+  "source": "/workspace/.hf_home/hub/models--Qwen--Qwen1.5-MoE-A2.7B-Chat/snapshots/ec052fda178e241c7c443468d2fa1db6618996be",
+  "backend": "triton",
+  "checkpoint_bytes": 4721200949,
+  "base_tensor_bytes": 3129756972,
+  "qjl_tensor_bytes": 1585152000,
+  "metadata_bytes": 6291977,
+  "checkpoint": "results/qjl_codebook_base/full/compact_qjl_state.pt",
+  "reload_probe_max_abs_error": 0.0
+}
