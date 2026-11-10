@@ -42,15 +42,20 @@ def encode_exponents(exponents: np.ndarray, block_size: int = 512,
     pieces = []
     for start in range(0, len(exponents), block_size):
         block = exponents[start:start + block_size]
-        palette, inverse = np.unique(block, return_inverse=True)
+        # BF16 exponents have only 256 possible symbols.  A histogram gives
+        # the same sorted palette as np.unique without sorting every block.
+        palette = np.flatnonzero(np.bincount(block, minlength=256)).astype(np.uint8)
         options = [(len(block), 0)]
         options += [((1 << width) + math.ceil(len(block) * width / 8), width)
                     for width in widths if len(palette) <= 1 << width]
         _, mode = min(options)
         if mode:
+            lookup = np.empty(256, dtype=np.uint8)
+            lookup[palette] = np.arange(len(palette), dtype=np.uint8)
+            inverse = lookup[block]
             pad = np.zeros(1 << mode, dtype=np.uint8)
             pad[:len(palette)] = palette
-            piece = pad.tobytes() + _pack_codes(inverse.astype(np.uint8), mode)
+            piece = pad.tobytes() + _pack_codes(inverse, mode)
         else:
             piece = block.tobytes()
         pieces.append(piece)

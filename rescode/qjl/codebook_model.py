@@ -12,7 +12,8 @@ import torch.nn.functional as F
 from .codebook_base import PackedCodebookBase, encode_base
 from .core import PackedResidual, ProjectionBank, pack_residual, qjl_triton_fused_gate_up
 from .exponent_mantissa_base import (PackedExponentMantissaBase,
-    encode_exponent_mantissa_base, exponent_mantissa_base_bytes)
+    encode_exponent_mantissa_base, exponent_mantissa_base_bytes,
+    reconstruct_base_from_weight)
 from .exponent_model import PROJECTIONS, _install
 
 
@@ -123,7 +124,8 @@ def encode_projection(weight, bank, backend, iterations=8, row_chunk=None,
     _synchronize(weight.device)
     after_base = time.perf_counter()
     base = restore_base(state, weight.device, base_method)
-    decoded = base.decode()
+    decoded = (reconstruct_base_from_weight(weight, base.beta)
+               if base_method == "exponent-mantissa" else base.decode())
     weight_fp32 = weight.float()
     residual = torch.where(torch.isfinite(weight_fp32), weight_fp32 - decoded,
                            torch.zeros_like(decoded))

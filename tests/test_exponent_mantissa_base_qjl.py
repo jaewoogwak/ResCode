@@ -1,6 +1,7 @@
 """Correctness checks for sign/exponent plus row-mantissa Base and QJL."""
 
 import tempfile
+import math
 from pathlib import Path
 
 import numpy as np
@@ -13,8 +14,63 @@ from rescode.qjl.codebook_model import (CodebookExpert, encode_projection,
 from rescode.qjl.compact_base import CompactBase, byte_payload, encode_base as encode_compact_base
 from rescode.qjl.core import ProjectionBank, qjl_reference, qjl_triton
 from rescode.qjl.exponent_mantissa_base import (PackedExponentMantissaBase,
-    encode_exponent_mantissa_base, exponent_mantissa_base_bytes, fit_row_beta)
-from rescode.qjl.packed_exponent import decode_exponents
+    encode_exponent_mantissa_base, exponent_mantissa_base_bytes, fit_row_beta,
+    reconstruct_base_from_weight)
+from rescode.qjl.packed_exponent import decode_exponents, encode_exponents, _pack_codes
+
+
+def test_exponent_encoder_legacy_byte_parity():
+    """The faster encoder must preserve every field of the checkpoint format."""
+    rng = np.random.default_rng(4)
+    arrays = [np.array([], dtype=np.uint8),
+              rng.integers(0, 256, 8193, dtype=np.uint8),
+              rng.integers(115, 124, 8193, dtype=np.uint8),
+              rng.integers(0, 20, 8193, dtype=np.uint8),
+              np.full(8193, 126, dtype=np.uint8)]
+    for values in arrays:
+        for block_size in (32, 512, 4096):
+            offsets, modes, pieces = [0], bytearray(), []
+            for start in range(0, len(values), block_size):
+                block = values[start:start + block_size]
+                palette, inverse = np.unique(block, return_inverse=True)
+                options = [(len(block), 0)]
+                options += [((1 << width) + math.ceil(len(block) * width / 8), width)
+                            for width in (3, 4, 5) if len(palette) <= 1 << width]
+                _, mode = min(options)
+                if mode:
+                    pad = np.zeros(1 << mode, dtype=np.uint8)
+                    pad[:len(palette)] = palette
+                    piece = pad.tobytes() + _pack_codes(inverse.astype(np.uint8), mode)
+                else:
+                    piece = block.tobytes()
+                pieces.append(piece)
+                offsets.append(offsets[-1] + len(piece))
+                modes.append(mode)
+            old = {"exp_data": b"".join(pieces),
+                   "exp_offsets": np.asarray(offsets, dtype=np.uint32).tobytes(),
+                   "exp_modes": bytes(modes), "exp_block_size": block_size}
+            new = encode_exponents(values, block_size)
+            assert old == new
+            assert np.array_equal(decode_exponents(new, len(values)), values)
+
+
+def test_fast_reconstruction_parity():
+    raw = torch.tensor([[0x3f00, 0xbf40, 0x0000, 0x8000, 0x0001, 0x8002,
+                         0x7f80, 0xff80, 0x7fc1, 0xffc1]], dtype=torch.uint16)
+    for device in (["cpu", "cuda"] if torch.cuda.is_available() else ["cpu"]):
+        weight = raw.view(torch.bfloat16).to(device)
+        state = encode_exponent_mantissa_base(weight, block_size=32)
+        packed = PackedExponentMantissaBase(state, device)
+        fast = reconstruct_base_from_weight(weight, packed.beta)
+        slow = packed.decode()
+        assert torch.equal(fast.view(torch.int32), slow.view(torch.int32))
+        torch.manual_seed(15)
+        regular = torch.randn(19, 65, device=device).to(torch.bfloat16)
+        state = encode_exponent_mantissa_base(regular)
+        packed = PackedExponentMantissaBase(state, device)
+        fast = reconstruct_base_from_weight(regular, packed.beta)
+        slow = packed.decode()
+        assert torch.equal(fast, slow)
 
 
 def test_bits_beta_and_special_values():
@@ -129,6 +185,9 @@ def test_cuda_packed_inference_and_checkpoint():
 
 
 if __name__ == "__main__":
+    test_exponent_encoder_legacy_byte_parity()
+    test_fast_reconstruction_parity()
+    print("Exponent encoder bytes and fast reconstruction parity: passed")
     test_bits_beta_and_special_values()
     print("BF16 exponent/sign, beta and reconstruction tests: passed")
     test_cuda_packed_inference_and_checkpoint()

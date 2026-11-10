@@ -73,6 +73,26 @@ def exponent_mantissa_base_bytes(state: dict) -> int:
     return encoded_bytes(state) + state["beta"].numel() * state["beta"].element_size()
 
 
+@torch.no_grad()
+def reconstruct_base_from_weight(weight: torch.Tensor, beta: torch.Tensor) -> torch.Tensor:
+    """Rebuild the saved Base while the original BF16 bits are still available.
+
+    This is identical to decoding the packed sign/exponent stream, including
+    signed zeros, subnormal scales and exponent-255 special values.  It avoids
+    a CPU exponent decode and a dense exponent upload during compression.
+    """
+    if weight.dtype != torch.bfloat16 or weight.ndim != 2:
+        raise ValueError("expected a BF16 matrix")
+    if beta.dtype != torch.float16 or beta.numel() != weight.shape[0]:
+        raise ValueError("expected one stored FP16 beta per output row")
+    bits = weight.contiguous().view(torch.uint16).to(torch.int32)
+    exponent = (bits >> 7) & 255
+    subnormal = (exponent == 0) & ((bits & 127) != 0)
+    unscaled = torch.where(subnormal, (bits & 0x8000) | 0x0080, bits & 0xFF80)
+    unscaled = torch.where(exponent == 255, bits, unscaled)
+    return unscaled.to(torch.uint16).view(torch.bfloat16).float() * beta.to(weight.device).float()[:, None]
+
+
 class PackedExponentMantissaBase(nn.Module):
     """Packed GPU base; dense reconstruction is only made by decode()."""
 
