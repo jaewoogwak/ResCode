@@ -6,6 +6,7 @@ import csv
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -36,14 +37,21 @@ def parse_args():
     p.add_argument("--qjl-d-factor", type=float, default=1.0)
     p.add_argument("--projection-seed", type=int, default=0)
     p.add_argument("--iterations", type=int, default=8)
-    p.add_argument("--row-chunk", type=int, default=128)
+    p.add_argument("--base-row-chunk", type=int, default=512)
+    p.add_argument("--qjl-row-chunk", type=int, default=128,
+                   help="128 preserves the original packed signs; larger GEMMs can change near-zero signs")
+    p.add_argument("--row-chunk", type=int, default=None,
+                   help="Legacy alias: set both Base and QJL row chunks")
     p.add_argument("--gpu-memory-fraction", type=float, default=0.94)
     p.add_argument("--task", default=TASKS)
     p.add_argument("--eval-limit", type=int, default=0)
     p.add_argument("--eval-batch-size", type=int, default=16)
     p.add_argument("--skip-eval", action="store_true")
     args = p.parse_args()
-    if args.qjl_d_factor <= 0 or args.iterations < 1 or args.row_chunk < 1:
+    if args.row_chunk is not None:
+        args.base_row_chunk = args.qjl_row_chunk = args.row_chunk
+    if (args.qjl_d_factor <= 0 or args.iterations < 1
+            or args.base_row_chunk < 1 or args.qjl_row_chunk < 1):
         p.error("QJL factor, iterations and row chunk must be positive")
     if args.mode == "eval" and not args.checkpoint:
         p.error("--checkpoint is required for eval")
@@ -80,14 +88,21 @@ def main():
     metrics = {"mode": args.mode, "model": MODEL, "source": str(source),
                "backend": args.backend}
     if args.mode == "compress":
+        if args.qjl_row_chunk != 128:
+            print("[codebook] warning: QJL row chunks other than 128 can change "
+                  "near-zero packed signs due to GEMM rounding", flush=True)
         layers = select(args.layers, len(model.model.layers))
         if any(not hasattr(model.model.layers[i].mlp, "experts") for i in layers):
             raise ValueError("selected layer lacks routed experts")
         config = {"format": "rescode-codebook-base-qjl-v1", "model": MODEL,
                   "layers": layers, "qjl_d_factor": args.qjl_d_factor,
                   "projection_seed": args.projection_seed, "backend": args.backend,
-                  "iterations": args.iterations, "row_chunk": args.row_chunk}
-        data, records = compress_model(model, config)
+                  "iterations": args.iterations, "row_chunk": args.qjl_row_chunk,
+                  "base_row_chunk": args.base_row_chunk,
+                  "qjl_row_chunk": args.qjl_row_chunk}
+        compression_start = time.perf_counter()
+        data, records, timing_records = compress_model(model, config)
+        metrics["compression_wall_seconds"] = time.perf_counter() - compression_start
         path = args.checkpoint or (out / "compact_qjl_state.pt")
         sizes = save_checkpoint(data, config, path)
         metrics.update(sizes)
@@ -96,6 +111,12 @@ def main():
         summary.update(sizes)
         summary["layers"] = layers
         summary["qjl_d_factor"] = args.qjl_d_factor
+        summary["compression_stage_seconds"] = {
+            key: sum(record[key] for record in records)
+            for key in ("time_encode_base_s", "time_residual_s", "time_pack_residual_s",
+                        "time_diagnostics_s", "time_cpu_transfer_s", "time_total_s")}
+        summary["compression_peak_extra_cuda_bytes"] = max(
+            (r["peak_extra_cuda_bytes"] or 0 for r in records), default=0)
         summary["checkpoint_bits_per_weight"] = (
             8 * sizes["checkpoint_bytes"] / summary["overall"]["weight_count"])
         atomic_json(out / "diagnostics.json", {"records": records})
@@ -104,6 +125,8 @@ def main():
             writer.writeheader()
             writer.writerows(records)
         atomic_json(out / "summary.json", summary)
+        atomic_json(out / "compression_timing.json", {"records": timing_records,
+                                                         "stage_seconds": summary["compression_stage_seconds"]})
         del data
         before = probe(model, tokenizer)
         load_checkpoint(model, path, backend=args.backend)

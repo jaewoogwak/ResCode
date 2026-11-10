@@ -1,0 +1,254 @@
+{
+  "scope": "Qwen layer 12, expert 0, gate/up/down only",
+  "baseline_commit": "b7d035f",
+  "gpu": "NVIDIA RTX PRO 5000 Blackwell",
+  "repeats": 3,
+  "qjl_chunk_repeats": 5,
+  "baseline_base_row_chunk": 128,
+  "optimized_base_row_chunk": 512,
+  "baseline_qjl_row_chunk": 128,
+  "optimized_qjl_row_chunk": 128,
+  "sum_of_projection_median_seconds_before": 0.2476748493500054,
+  "sum_of_projection_median_seconds_after": 0.030743548180907965,
+  "three_projection_speedup": 8.056156950153653,
+  "max_extra_cuda_bytes_before": 53948928,
+  "max_extra_cuda_bytes_after": 97193472,
+  "base_chunk_benchmark": {
+    "gate": {
+      "128": {
+        "median_seconds": 0.019640548154711723,
+        "median_peak_extra_bytes": 21576192,
+        "old_state_equal": {
+          "packed": true,
+          "scales": true,
+          "zero_indices": true
+        }
+      },
+      "256": {
+        "median_seconds": 0.010954362340271473,
+        "median_peak_extra_bytes": 37244928,
+        "old_state_equal": {
+          "packed": true,
+          "scales": true,
+          "zero_indices": true
+        }
+      },
+      "512": {
+        "median_seconds": 0.005890900734812021,
+        "median_peak_extra_bytes": 67146752,
+        "old_state_equal": {
+          "packed": true,
+          "scales": true,
+          "zero_indices": true
+        }
+      }
+    },
+    "up": {
+      "128": {
+        "median_seconds": 0.01978560769930482,
+        "median_peak_extra_bytes": 22624768,
+        "old_state_equal": {
+          "packed": true,
+          "scales": true,
+          "zero_indices": true
+        }
+      },
+      "256": {
+        "median_seconds": 0.010978523176163435,
+        "median_peak_extra_bytes": 36720640,
+        "old_state_equal": {
+          "packed": true,
+          "scales": true,
+          "zero_indices": true
+        }
+      },
+      "512": {
+        "median_seconds": 0.005641540978103876,
+        "median_peak_extra_bytes": 68195328,
+        "old_state_equal": {
+          "packed": true,
+          "scales": true,
+          "zero_indices": true
+        }
+      }
+    },
+    "down": {
+      "128": {
+        "median_seconds": 0.02844975423067808,
+        "median_peak_extra_bytes": 19121152,
+        "old_state_equal": {
+          "packed": true,
+          "scales": true,
+          "zero_indices": true
+        }
+      },
+      "256": {
+        "median_seconds": 0.014358545653522015,
+        "median_peak_extra_bytes": 27481088,
+        "old_state_equal": {
+          "packed": true,
+          "scales": true,
+          "zero_indices": true
+        }
+      },
+      "512": {
+        "median_seconds": 0.007428597193211317,
+        "median_peak_extra_bytes": 49060864,
+        "old_state_equal": {
+          "packed": true,
+          "scales": true,
+          "zero_indices": true
+        }
+      }
+    }
+  },
+  "qjl_chunk_benchmark": {
+    "gate": {
+      "128": {
+        "median_seconds": 0.002166785765439272,
+        "median_peak_extra_bytes": 3479552,
+        "packed_equal": true,
+        "flipped_bits": 0,
+        "norm_max_abs": 0.0
+      },
+      "512": {
+        "median_seconds": 0.0007569389417767525,
+        "median_peak_extra_bytes": 12718592,
+        "packed_equal": false,
+        "flipped_bits": 59,
+        "norm_max_abs": 0.0
+      },
+      "1024": {
+        "median_seconds": 0.0005603889003396034,
+        "median_peak_extra_bytes": 25170432,
+        "packed_equal": true,
+        "flipped_bits": 0,
+        "norm_max_abs": 0.0
+      }
+    },
+    "up": {
+      "128": {
+        "median_seconds": 0.0023027663119137287,
+        "median_peak_extra_bytes": 3479552,
+        "packed_equal": true,
+        "flipped_bits": 0,
+        "norm_max_abs": 0.0
+      },
+      "512": {
+        "median_seconds": 0.0007517090998589993,
+        "median_peak_extra_bytes": 12718592,
+        "packed_equal": false,
+        "flipped_bits": 61,
+        "norm_max_abs": 0.0
+      },
+      "1024": {
+        "median_seconds": 0.0005333088338375092,
+        "median_peak_extra_bytes": 25170432,
+        "packed_equal": true,
+        "flipped_bits": 0,
+        "norm_max_abs": 0.0
+      }
+    },
+    "down": {
+      "128": {
+        "median_seconds": 0.0034097847528755665,
+        "median_peak_extra_bytes": 2509312,
+        "packed_equal": true,
+        "flipped_bits": 0,
+        "norm_max_abs": 0.0
+      },
+      "512": {
+        "median_seconds": 0.0008826376870274544,
+        "median_peak_extra_bytes": 8929792,
+        "packed_equal": false,
+        "flipped_bits": 174,
+        "norm_max_abs": 0.0
+      },
+      "1024": {
+        "median_seconds": 0.00048328889533877373,
+        "median_peak_extra_bytes": 18539008,
+        "packed_equal": false,
+        "flipped_bits": 174,
+        "norm_max_abs": 0.0
+      }
+    }
+  },
+  "projections": {
+    "gate": {
+      "before": {
+        "encode_base": 0.07026719534769654,
+        "residual": 0.0008236989378929138,
+        "pack_residual": 0.0024599158205091953,
+        "diagnostics": 0.000647509004920721,
+        "cpu_transfer": 0.00010953005403280258,
+        "total": 0.07430100906640291,
+        "peak_extra_bytes": 53945344
+      },
+      "after": {
+        "time_encode_base_s": 0.006036088801920414,
+        "time_residual_s": 0.0006713191978633404,
+        "time_pack_residual_s": 0.00228059571236372,
+        "time_diagnostics_s": 0.0005221390165388584,
+        "time_cpu_transfer_s": 0.00042970944195985794,
+        "time_total_s": 0.009936132933944464,
+        "peak_extra_cuda_bytes": 97193472
+      },
+      "speedup": 7.477859803241055,
+      "additional_peak_cuda_bytes": 43248128,
+      "before_residual_ratio": 0.3476262929360147,
+      "after_residual_ratio": 0.3476262929360147,
+      "base_qjl_exact_parity": true
+    },
+    "up": {
+      "before": {
+        "encode_base": 0.06614455115050077,
+        "residual": 0.00073581887409091,
+        "pack_residual": 0.0023094057105481625,
+        "diagnostics": 0.0005553602240979671,
+        "cpu_transfer": 0.00011523906141519547,
+        "total": 0.0698524652980268,
+        "peak_extra_bytes": 52896768
+      },
+      "after": {
+        "time_encode_base_s": 0.005550241097807884,
+        "time_residual_s": 0.0005302191711962223,
+        "time_pack_residual_s": 0.002141847275197506,
+        "time_diagnostics_s": 0.0004403986968100071,
+        "time_cpu_transfer_s": 0.0002274801954627037,
+        "time_total_s": 0.008887735195457935,
+        "peak_extra_cuda_bytes": 96407040
+      },
+      "speedup": 7.859422424480514,
+      "additional_peak_cuda_bytes": 43510272,
+      "before_residual_ratio": 0.3477480577308959,
+      "after_residual_ratio": 0.3477480577308959,
+      "base_qjl_exact_parity": true
+    },
+    "down": {
+      "before": {
+        "encode_base": 0.0986987017095089,
+        "residual": 0.000750998966395855,
+        "pack_residual": 0.0036823549307882786,
+        "diagnostics": 0.0005599292926490307,
+        "cpu_transfer": 0.00010750023648142815,
+        "total": 0.10352137498557568,
+        "peak_extra_bytes": 53948928
+      },
+      "after": {
+        "time_encode_base_s": 0.007492528297007084,
+        "time_residual_s": 0.0006137387827038765,
+        "time_pack_residual_s": 0.0031441343016922474,
+        "time_diagnostics_s": 0.0004455600865185261,
+        "time_cpu_transfer_s": 0.00022603897377848625,
+        "time_total_s": 0.011919680051505566,
+        "peak_extra_cuda_bytes": 95097344
+      },
+      "speedup": 8.684912224007219,
+      "additional_peak_cuda_bytes": 41148416,
+      "before_residual_ratio": 0.3476227034270163,
+      "after_residual_ratio": 0.3476227034270163,
+      "base_qjl_exact_parity": true
+    }
+  },
+  "timing_note": "CUDA synchronize at stage boundaries; old encode_base includes Base CPU transfer, new Base CPU transfer is a separate stage. Projection banks were warmed before trials. The speedup covers only the three selected matrices, not model loading or checkpoint serialization."
+}

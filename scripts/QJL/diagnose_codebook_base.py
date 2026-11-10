@@ -62,7 +62,9 @@ def main():
     parser.add_argument("--projections", default="gate,up,down")
     parser.add_argument("--qjl-d-factor", type=float, default=1.0)
     parser.add_argument("--iterations", type=int, default=8)
-    parser.add_argument("--row-chunk", type=int, default=128)
+    parser.add_argument("--base-row-chunk", type=int, default=512)
+    parser.add_argument("--row-chunk", type=int, default=None,
+                        help="Legacy alias for --base-row-chunk")
     parser.add_argument("--device", default="auto", choices=("auto", "cpu", "cuda"),
                         help="Use one weight matrix at a time on GPU when available")
     parser.add_argument("--checkpoint", type=Path, help="Optional completed checkpoint for actual file bytes")
@@ -70,6 +72,10 @@ def main():
     args = parser.parse_args()
     if args.qjl_d_factor <= 0:
         parser.error("--qjl-d-factor must be positive")
+    if args.row_chunk is not None:
+        args.base_row_chunk = args.row_chunk
+    if args.base_row_chunk < 1:
+        parser.error("--base-row-chunk must be positive")
     device = ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
     if device == "cuda" and not torch.cuda.is_available():
         parser.error("CUDA is unavailable")
@@ -98,7 +104,8 @@ def main():
                     weight = handles[shard].get_tensor(name).to(device)
                     if weight.dtype != torch.bfloat16 or weight.ndim != 2:
                         raise ValueError(f"expected BF16 matrix: {name}")
-                    state = encode_base(weight, args.iterations, args.row_chunk)
+                    state = encode_base(weight, args.iterations, args.base_row_chunk,
+                                        return_cpu=False)
                     decoded = PackedCodebookBase(state, device).decode()
                     residual = weight.float() - decoded
                     if not torch.allclose(decoded + residual, weight.float(), rtol=1e-6, atol=1e-6):

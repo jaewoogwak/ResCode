@@ -10,7 +10,50 @@ import torch.nn.functional as F
 from rescode.qjl.codebook_base import PackedCodebookBase, encode_base, pack_codes, unpack_codes
 from rescode.qjl.codebook_model import (CodebookExpert, encode_projection,
                                          load_checkpoint, save_checkpoint)
-from rescode.qjl.core import ProjectionBank, qjl_reference, qjl_triton
+from rescode.qjl.core import ProjectionBank, pack_residual, qjl_reference, qjl_triton
+
+
+def legacy_fit(weight):
+    """Original four-start alternating update, kept as a regression oracle."""
+    w = weight.float()
+    magnitude = w.abs()
+    active = magnitude != 0
+    mean = magnitude.mean(1)
+    rms = magnitude.square().mean(1).sqrt()
+    initials = torch.stack((mean, mean * 2, mean * 0.5, rms), dim=0).clamp_min(1e-12)
+    best_error = torch.full_like(mean, float("inf"))
+    best_alpha = torch.zeros_like(mean, dtype=torch.float16)
+    best_index = torch.zeros_like(magnitude, dtype=torch.bool)
+    for alpha in initials:
+        for _ in range(8):
+            index = magnitude > (1.25 * alpha[:, None])
+            level = torch.where(index, 2.0, 0.5) * active
+            alpha = (magnitude * level).sum(1) / level.square().sum(1).clamp_min(1e-30)
+        stored = alpha.to(torch.float16)
+        index = magnitude > (1.25 * stored.float()[:, None])
+        level = torch.where(index, 2.0, 0.5) * active
+        error = (magnitude - stored.float()[:, None] * level).square().sum(1)
+        better = error < best_error
+        best_error = torch.where(better, error, best_error)
+        best_alpha = torch.where(better, stored, best_alpha)
+        best_index = torch.where(better[:, None], index, best_index)
+    codes = (w < 0).to(torch.uint8) | (best_index.to(torch.uint8) << 1)
+    zeros = torch.nonzero(((~active) & (best_alpha.float()[:, None] != 0)).reshape(-1),
+                          as_tuple=False).reshape(-1).to(torch.int32)
+    return {"packed": pack_codes(codes), "scales": best_alpha, "zero_indices": zeros}
+
+
+def test_vectorized_fit_matches_legacy():
+    torch.manual_seed(314)
+    weight = (torch.randn(19, 64) * 0.1).to(torch.bfloat16)
+    weight[0, :3] = 0
+    weight[7, 23] = 0
+    weight[12] = 0
+    old = legacy_fit(weight)
+    for chunk in (3, 8, 19):
+        new = encode_base(weight, row_chunk=chunk)
+        for key in ("packed", "scales", "zero_indices"):
+            assert torch.equal(new[key], old[key])
 
 
 def test_codebook_fit_and_residual_identity():
@@ -50,6 +93,24 @@ def test_packed_base_and_qjl_triton():
     weight[1, 3] = 0
     bank = ProjectionBank(64, 9)
     base, qjl, state, record = encode_projection(weight, bank, "triton", row_chunk=16)
+    old_fit = legacy_fit(weight)
+    for key in ("packed", "scales", "zero_indices"):
+        assert torch.equal(state["base"][key], old_fit[key].cpu())
+    old_residual = weight.float() - PackedCodebookBase(
+        {**state["base"], **{key: old_fit[key].cpu() for key in old_fit}}, device).decode()
+    old_packed, old_norms = pack_residual(old_residual, bank, row_chunk=16)
+    assert torch.equal(old_packed, qjl.packed)
+    assert torch.equal(old_norms, qjl.norms)
+    _, _, split_state, split_record = encode_projection(
+        weight, bank, "triton", base_row_chunk=32, qjl_row_chunk=16)
+    assert torch.equal(split_state["base"]["packed"], state["base"]["packed"])
+    assert torch.equal(split_state["packed"], state["packed"])
+    assert torch.equal(split_state["norms"], state["norms"])
+    timing_keys = ("time_encode_base_s", "time_residual_s", "time_pack_residual_s",
+                   "time_diagnostics_s", "time_cpu_transfer_s")
+    assert all(split_record[key] >= 0 for key in timing_keys)
+    assert abs(sum(split_record[key] for key in timing_keys)
+               - split_record["time_total_s"]) < 1e-8
     x = torch.randn(5, 64, device=device, dtype=torch.bfloat16)
     actual = base(x).float()
     expected = F.linear(x, base.decode().to(x.dtype)).float()
@@ -132,6 +193,7 @@ def test_checkpoint_reload_exact_forward_parity():
 
 
 if __name__ == "__main__":
+    test_vectorized_fit_matches_legacy()
     test_codebook_fit_and_residual_identity()
     test_fit_improves_over_single_level()
     print("CPU codebook tests: passed")

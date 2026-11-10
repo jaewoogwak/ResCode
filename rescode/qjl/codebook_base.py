@@ -4,9 +4,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-def pack_codes(codes: torch.Tensor) -> torch.Tensor:
+def pack_codes(codes: torch.Tensor, *, validate: bool = True) -> torch.Tensor:
     """Pack four [sign, scale-index] codes per byte, row-major."""
-    if codes.ndim != 2 or (codes > 3).any() or (codes < 0).any():
+    if codes.ndim != 2 or (validate and ((codes > 3).any() or (codes < 0).any())):
         raise ValueError("codes must be a [rows, columns] tensor with values 0..3")
     flat = codes.reshape(-1).to(torch.uint8)
     flat = F.pad(flat, (0, (-flat.numel()) % 4))
@@ -31,7 +31,8 @@ def decode_base(packed: torch.Tensor, scales: torch.Tensor, cols: int,
 
 
 @torch.no_grad()
-def encode_base(weight: torch.Tensor, iterations: int = 8, row_chunk: int = 128):
+def encode_base(weight: torch.Tensor, iterations: int = 8, row_chunk: int = 128,
+                *, return_cpu: bool = True):
     """Alternating row-wise assignment/least squares with four initial scales.
 
     The best candidate is selected using the *stored FP16* scale.  The final
@@ -49,34 +50,32 @@ def encode_base(weight: torch.Tensor, iterations: int = 8, row_chunk: int = 128)
         mean = magnitude.mean(1)
         rms = magnitude.square().mean(1).sqrt()
         initials = torch.stack((mean, mean * 2, mean * 0.5, rms), dim=0).clamp_min(1e-12)
-        best_error = torch.full_like(mean, float("inf"))
-        best_alpha = torch.zeros_like(mean, dtype=torch.float16)
-        best_index = torch.zeros_like(magnitude, dtype=torch.bool)
-        for alpha in initials:
-            for _ in range(iterations):
-                index = magnitude > (1.25 * alpha[:, None])
-                level = torch.where(index, 2.0, 0.5) * active
-                alpha = (magnitude * level).sum(1) / level.square().sum(1).clamp_min(1e-30)
-            # Candidate quality is measured after storing alpha in FP16.
-            stored = alpha.to(torch.float16)
-            if not torch.isfinite(stored).all():
-                raise OverflowError("row scale cannot be stored in FP16")
-            index = magnitude > (1.25 * stored.float()[:, None])
-            level = torch.where(index, 2.0, 0.5) * active
-            error = (magnitude - stored.float()[:, None] * level).square().sum(1)
-            better = error < best_error
-            best_error = torch.where(better, error, best_error)
-            best_alpha = torch.where(better, stored, best_alpha)
-            best_index = torch.where(better[:, None], index, best_index)
+        # Evaluate the four independent alternating least-squares starts in
+        # one batched tensor. The first start wins ties, as in the old loop.
+        alpha = initials
+        for _ in range(iterations):
+            index = magnitude[None] > (1.25 * alpha[:, :, None])
+            level = torch.where(index, 2.0, 0.5) * active[None]
+            alpha = (magnitude[None] * level).sum(2) / level.square().sum(2).clamp_min(1e-30)
+        stored = alpha.to(torch.float16)
+        if not torch.isfinite(stored).all():
+            raise OverflowError("row scale cannot be stored in FP16")
+        index = magnitude[None] > (1.25 * stored.float()[:, :, None])
+        level = torch.where(index, 2.0, 0.5) * active[None]
+        error = (magnitude[None] - stored.float()[:, :, None] * level).square().sum(2)
+        choice = error.argmin(0)
+        best_alpha = stored.gather(0, choice[None]).squeeze(0)
+        best_index = index.gather(0, choice[None, :, None].expand(1, w.shape[0], cols)).squeeze(0)
         codes = (w < 0).to(torch.uint8) | (best_index.to(torch.uint8) << 1)
-        code_parts.append(codes.cpu())
-        scales_parts.append(best_alpha.cpu())
-        zero_parts.append(torch.nonzero((~active) & (best_alpha.float()[:, None] != 0),
-                                        as_tuple=False).cpu())
-    zero_indices = torch.cat([((part[:, 0] + chunk * row_chunk) * cols + part[:, 1])
-                              for chunk, part in enumerate(zero_parts)]).to(torch.int32)
-    return {"packed": pack_codes(torch.cat(code_parts)),
-            "scales": torch.cat(scales_parts), "zero_indices": zero_indices,
+        code_parts.append(codes)
+        scales_parts.append(best_alpha)
+        zero_parts.append((~active) & (best_alpha.float()[:, None] != 0))
+    packed = pack_codes(torch.cat(code_parts), validate=False)
+    scales = torch.cat(scales_parts)
+    zero_indices = torch.nonzero(torch.cat(zero_parts).reshape(-1), as_tuple=False).reshape(-1).to(torch.int32)
+    if return_cpu:
+        packed, scales, zero_indices = packed.cpu(), scales.cpu(), zero_indices.cpu()
+    return {"packed": packed, "scales": scales, "zero_indices": zero_indices,
             "shape": (rows, cols), "codebook": (0.5, 2.0),
             "iterations": iterations}
 
@@ -93,7 +92,7 @@ class PackedCodebookBase(nn.Module):
         self.register_buffer("packed", state["packed"].to(device).contiguous())
         self.register_buffer("scales", state["scales"].to(device).contiguous())
         zeros = state.get("zero_indices", torch.empty(0, dtype=torch.int32))
-        if zeros.numel() and (zeros.min() < 0 or zeros.max() >= rows * cols):
+        if zeros.numel() and zeros.device.type == "cpu" and (zeros.min() < 0 or zeros.max() >= rows * cols):
             raise ValueError("invalid zero indices")
         self.register_buffer("zero_indices", zeros.to(device).contiguous())
 
