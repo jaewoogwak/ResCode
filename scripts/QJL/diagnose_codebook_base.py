@@ -67,9 +67,13 @@ def main():
                         help="Legacy alias for --base-row-chunk")
     parser.add_argument("--device", default="auto", choices=("auto", "cpu", "cuda"),
                         help="Use one weight matrix at a time on GPU when available")
-    parser.add_argument("--checkpoint", type=Path, help="Optional completed checkpoint for actual file bytes")
+    parser.add_argument("--checkpoint", type=Path,
+                        help="Optional existing checkpoint for actual file bytes; diagnostics do not create it")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "results/qjl_codebook_base")
     args = parser.parse_args()
+    if args.checkpoint and not args.checkpoint.is_file():
+        parser.error(f"--checkpoint must name an existing file: {args.checkpoint}; "
+                     "omit it to report projected QJL storage without a checkpoint")
     if args.qjl_d_factor <= 0:
         parser.error("--qjl-d-factor must be positive")
     if args.row_chunk is not None:
