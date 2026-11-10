@@ -1,0 +1,92 @@
+{
+  "mode": "eval",
+  "model": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+  "source": "/workspace/.hf_home/hub/models--Qwen--Qwen1.5-MoE-A2.7B-Chat/snapshots/ec052fda178e241c7c443468d2fa1db6618996be",
+  "backend": "triton",
+  "base_method": "exponent-mantissa",
+  "checkpoint": "results/qjl_exponent_mantissa_base/full/compact_qjl_state.pt",
+  "checkpoint_bytes": 9501939993,
+  "checkpoint_config": {
+    "format": "rescode-codebook-base-qjl-v1",
+    "model": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+    "layers": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+    ],
+    "qjl_d_factor": 1.0,
+    "base_method": "exponent-mantissa",
+    "projection_seed": 0,
+    "backend": "triton",
+    "iterations": 8,
+    "row_chunk": 128,
+    "base_row_chunk": 512,
+    "qjl_row_chunk": 128
+  },
+  "task_summary": {
+    "tasks": [
+      [
+        "arc_easy",
+        0.6557239057239057,
+        0.6207912457912458
+      ],
+      [
+        "arc_challenge",
+        0.35665529010238906,
+        0.38993174061433444
+      ]
+    ],
+    "avg": 0.5061895979131474,
+    "avg_norm_strict": 0.5053614932027901,
+    "avg_norm": 0.5053614932027901,
+    "avg_norm_uses_fallback": []
+  },
+  "task_results": {
+    "arc_challenge": {
+      "acc,none": 0.35665529010238906,
+      "acc_stderr,none": 0.013998056902620197,
+      "acc_norm,none": 0.38993174061433444,
+      "acc_norm_stderr,none": 0.01425295984889289
+    },
+    "arc_easy": {
+      "acc,none": 0.6557239057239057,
+      "acc_stderr,none": 0.009749495321590827,
+      "acc_norm,none": 0.6207912457912458,
+      "acc_norm_stderr,none": 0.00995589166886557
+    }
+  },
+  "gpu_resident_base_bytes": 7905458160,
+  "gpu_resident_qjl_bytes": 1585152000,
+  "gpu_resident_projection_bytes": 12353536,
+  "gpu_resident_compact_total_bytes": 9502963696,
+  "gpu_process_allocated_bytes": [
+    14339444224
+  ],
+  "gpu_process_reserved_bytes": [
+    40485519360
+  ],
+  "gpu_process_peak_allocated_bytes": [
+    29516738560
+  ]
+}

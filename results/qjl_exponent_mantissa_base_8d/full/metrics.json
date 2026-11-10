@@ -1,0 +1,26 @@
+{
+  "mode": "compress",
+  "model": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+  "source": "/workspace/.hf_home/hub/models--Qwen--Qwen1.5-MoE-A2.7B-Chat/snapshots/ec052fda178e241c7c443468d2fa1db6618996be",
+  "backend": "triton",
+  "compression_wall_seconds": 395.92206376744434,
+  "checkpoint_bytes": 20402049309,
+  "base_tensor_bytes": 7905458160,
+  "qjl_tensor_bytes": 12485099520,
+  "metadata_bytes": 11491629,
+  "checkpoint": "results/qjl_exponent_mantissa_base_8d/full/compact_qjl_state.pt",
+  "reload_probe_max_abs_error": 0.0,
+  "gpu_resident_base_bytes": 7905458160,
+  "gpu_resident_qjl_bytes": 12485099520,
+  "gpu_resident_projection_bytes": 98828288,
+  "gpu_resident_compact_total_bytes": 20489385968,
+  "gpu_process_allocated_bytes": [
+    25448702464
+  ],
+  "gpu_process_reserved_bytes": [
+    28894560256
+  ],
+  "gpu_process_peak_allocated_bytes": [
+    26715566080
+  ]
+}
