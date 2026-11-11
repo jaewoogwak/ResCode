@@ -4,7 +4,7 @@
   "source": "/root/.cache/huggingface/hub/models--Qwen--Qwen1.5-MoE-A2.7B-Chat/snapshots/ec052fda178e241c7c443468d2fa1db6618996be",
   "backend": "triton",
   "base_method": "exponent-mantissa",
-  "checkpoint": "results/qjl_exponent_mantissa_base_4d_rebuilt/full/compact_qjl_state.pt",
+  "checkpoint": "results/qjl_exponent_mantissa_base_4d/full/compact_qjl_state.pt",
   "checkpoint_bytes": 14173429221,
   "checkpoint_config": {
     "format": "rescode-codebook-base-qjl-v1",

@@ -3,24 +3,24 @@
   "model": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
   "source": "/root/.cache/huggingface/hub/models--Qwen--Qwen1.5-MoE-A2.7B-Chat/snapshots/ec052fda178e241c7c443468d2fa1db6618996be",
   "backend": "triton",
-  "compression_wall_seconds": 343.11995453806594,
-  "checkpoint_bytes": 11059112989,
+  "compression_wall_seconds": 348.3458009278402,
+  "checkpoint_bytes": 14173429221,
   "base_tensor_bytes": 7905458160,
-  "qjl_tensor_bytes": 3142287360,
-  "metadata_bytes": 11367469,
-  "checkpoint": "results/qjl_exponent_mantissa_base_2d_rebuilt/full/compact_qjl_state.pt",
+  "qjl_tensor_bytes": 6256558080,
+  "metadata_bytes": 11412981,
+  "checkpoint": "results/qjl_exponent_mantissa_base_4d/full/compact_qjl_state.pt",
   "reload_probe_max_abs_error": 0.0,
   "gpu_resident_base_bytes": 7905458160,
-  "gpu_resident_qjl_bytes": 3142287360,
-  "gpu_resident_projection_bytes": 24707072,
-  "gpu_resident_compact_total_bytes": 11072452592,
+  "gpu_resident_qjl_bytes": 6256558080,
+  "gpu_resident_projection_bytes": 49414144,
+  "gpu_resident_compact_total_bytes": 14211430384,
   "gpu_process_allocated_bytes": [
-    15373282816
+    18850006016
   ],
   "gpu_process_reserved_bytes": [
-    16531849216
+    20501757952
   ],
   "gpu_process_peak_allocated_bytes": [
-    17040833536
+    20357457408
   ]
 }
